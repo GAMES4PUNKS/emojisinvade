@@ -1,3 +1,5 @@
+// game.js — Updated for emoji rendering + reduced bomb drop rate
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 400;
@@ -11,13 +13,12 @@ let highScore = Number(localStorage.getItem("high_score") || 0);
 
 const player = { x: 10, y: 19, speedCounter: 0 };
 let bullets = [];
-let invaders = [];
 let bombs = [];
+let invaders = [];
 let invaderDir = 1;
 let invaderSpeed = 40;
 let invaderTick = 0;
 let bulletCooldown = 0;
-let gameOver = false;
 
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
@@ -25,7 +26,7 @@ const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 const radio = document.getElementById("radioStream");
 
-const emojiBank = "😀😅😇🤣😂🙃😍🥰😘🤪😜😝🧐🤓😎🤩🥳🥺😢😭😤😡🤬🤯😳🥵🥶😱🤗😥😰🤥🥱😪🤢🤠🤑🤕🤒😷🤧🤮😈👿👹🤡👻😺🎃🤖👾👽☠️😸😻🙀😿👀🎅🐶🐱🐭🐹🐰🦊🐻🐷🐮🐨🐻‍❄️🐼🐸🐵🙈🙉🙊🌍🌈⛄️🍏🍎🍐🍊🍒🍔🍟🧁🍩🍪⚽️🏀🏈⚾️🥎🏐❤️🧡💛💚💙💜☢️☣️🔞♥️".split('');
+const emojiBank = "😀😎😂😜🤖👻💀👽👾🎃🔥✨💩🎯⚡️🚀".split('');
 
 function spawnInvaderGrid() {
   invaders = [];
@@ -50,6 +51,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') right = true;
   if (e.key === ' ') shooting = true;
 });
+
 document.addEventListener('keyup', e => {
   if (e.key === 'ArrowLeft') left = false;
   if (e.key === 'ArrowRight') right = false;
@@ -71,11 +73,9 @@ function updateHUD() {
 }
 
 function gameLoop() {
-  if (gameOver) return;
-
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Rocket move
+  // Player movement
   player.speedCounter++;
   if (player.speedCounter >= 4) {
     if (left && player.x > 0) player.x--;
@@ -83,7 +83,7 @@ function gameLoop() {
     player.speedCounter = 0;
   }
 
-  // Fire bullets
+  // Firing cooldown
   if (bulletCooldown > 0) bulletCooldown--;
   if (shooting && bulletCooldown === 0 && bullets.length < 3) {
     bullets.push({ x: player.x, y: player.y - 1 });
@@ -91,17 +91,16 @@ function gameLoop() {
   }
 
   bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
+  bombs = bombs.map(b => ({ x: b.x, y: b.y + 1 })).filter(b => b.y < tileCount);
 
-  // Move invaders
+  // Invader movement
   invaderTick++;
   if (invaderTick >= invaderSpeed) {
     let hitEdge = false;
     for (let i = 0; i < invaders.length; i++) {
       invaders[i].x += invaderDir;
-      if (Math.random() < 0.002) {
-        bombs.push({ x: invaders[i].x, y: invaders[i].y + 1 });
-      }
       if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
+      if (Math.random() < 0.002) bombs.push({ x: invaders[i].x, y: invaders[i].y });
     }
     if (hitEdge) {
       invaderDir *= -1;
@@ -112,16 +111,6 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // Move bombs
-  bombs = bombs.map(b => ({ x: b.x, y: b.y + 1 })).filter(b => b.y < tileCount);
-  bombs.forEach(b => {
-    if (b.x === player.x && b.y === player.y) {
-      gameOver = true;
-      gameOverOverlay.style.display = "flex";
-    }
-  });
-
-  // Bullet hits
   bullets.forEach((b, i) => {
     for (let j = 0; j < invaders.length; j++) {
       const inv = invaders[j];
@@ -138,14 +127,19 @@ function gameLoop() {
     }
   });
 
+  for (let b of bombs) {
+    if (b.x === player.x && b.y === player.y) {
+      gameOverOverlay.style.display = 'flex';
+      return;
+    }
+  }
+
   drawEmoji(player.x, player.y, "💩");
   bullets.forEach(b => drawEmoji(b.x, b.y, "💥"));
+  bombs.forEach(b => drawEmoji(b.x, b.y, "⚡️", true));
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true));
-  bombs.forEach(b => drawEmoji(b.x, b.y, "✨", true));
 
-  if (invaders.length === 0) {
-    spawnInvaderGrid();
-  }
+  if (invaders.length === 0) spawnInvaderGrid();
 
   updateHUD();
   requestAnimationFrame(gameLoop);
@@ -154,6 +148,7 @@ function gameLoop() {
 gameLoop();
 
 // UI Buttons
+
 document.getElementById("pauseBtn").onclick = () => {
   const paused = overlay.style.display === "block";
   overlay.textContent = paused ? "" : "PAUSED";
