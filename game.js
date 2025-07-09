@@ -1,5 +1,3 @@
-// game.js — Core Game Logic
-
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 400;
@@ -14,19 +12,18 @@ let highScore = Number(localStorage.getItem("high_score") || 0);
 const player = { x: 10, y: 19, speedCounter: 0 };
 let bullets = [];
 let invaders = [];
-let bombs = [];
 let invaderDir = 1;
 let invaderSpeed = 40;
 let invaderTick = 0;
 let bulletCooldown = 0;
+let bombs = [];
 
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
 const overlay = document.getElementById("overlay");
-const gameOverOverlay = document.getElementById("gameOverOverlay");
 const radio = document.getElementById("radioStream");
 
-const emojiBank = "😀😅😇🤣😂🙃😍🥰😘🤪😜😝🧐🤓😎🤩🥳🥺😢😭😤😡🤬🤯😳🥵🥶😱🤗😥😰🤥🥱😪🤢🤠🤑🤕🤒😷🤧🤮😈👿👹🤡👻😺🎃🤖👾👽☠️😸😻🙀😿👀🎅🐶🐱🐭🐹🐰🦊🐻🐷🐮🐨🐻‍❄️🐼🐸🐵🙈🙉🙊🌍🌈⛄️🍏🍎🍐🍊🍒🍔🍟🧁🍩🍪⚽️🏀🏈⚾️🥎🏐❤️🧡💛💚💙💜☢️☣️🔞♥️".split("");
+const emojiBank = "😀😅😇🤣😂🙃😍🥰😘🤪😜😝🧐🤓😎🤩🥳🥺😢😭😤😡🤬🤯😳🥵🥶😱🤗😥😰🤥🥱😪🤢🤠🤑🤕🤒😷🤧🤮😈👿👹🤡👻😺🎃🤖👾👽☠️😸😻🙀😿👀🎅🐶🐱🐭🐹🐰🦊🐻🐷🐮🐨🐻‍❄️🐼🐸🐵🙈🙉🙊🌍🌈⛄️🍏🍎🍐🍊🍒🍔🍟🧁🍩🍪⚽️🏀🏈⚾️🥎🏐❤️🧡💛💚💙💜☢️☣️🔞♥️".split('');
 
 function spawnInvaderGrid() {
   invaders = [];
@@ -58,7 +55,7 @@ document.addEventListener('keyup', e => {
 });
 
 function drawEmoji(x, y, emoji, flicker = false) {
-  ctx.font = `${gridSize}px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, EmojiOne, sans-serif`;
+  ctx.font = `${gridSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150));
@@ -82,7 +79,7 @@ function gameLoop() {
     player.speedCounter = 0;
   }
 
-  // Firing bullets
+  // Fire bullets
   if (bulletCooldown > 0) bulletCooldown--;
   if (shooting && bulletCooldown === 0 && bullets.length < 3) {
     bullets.push({ x: player.x, y: player.y - 1 });
@@ -91,13 +88,18 @@ function gameLoop() {
 
   bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
 
-  // Move invaders
+  // Invader movement
   invaderTick++;
   if (invaderTick >= invaderSpeed) {
     let hitEdge = false;
     for (let i = 0; i < invaders.length; i++) {
       invaders[i].x += invaderDir;
       if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
+
+      // Drop bomb chance
+      if (Math.random() < 0.03) {
+        bombs.push({ x: invaders[i].x, y: invaders[i].y + 1 });
+      }
     }
     if (hitEdge) {
       invaderDir *= -1;
@@ -108,23 +110,16 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // Bomb dropping
-  if (Math.random() < 0.05 && invaders.length) {
-    const inv = invaders[Math.floor(Math.random() * invaders.length)];
-    bombs.push({ x: inv.x, y: inv.y + 1 });
-  }
-
+  // Update bombs
   bombs = bombs.map(b => ({ x: b.x, y: b.y + 1 })).filter(b => b.y < tileCount);
-
-  // Check bomb hit
-  for (let bomb of bombs) {
+  bombs.forEach((bomb) => {
     if (bomb.x === player.x && bomb.y === player.y) {
-      gameOverOverlay.style.display = "flex";
-      return;
+      document.getElementById("gameOverOverlay").style.display = "flex";
+      cancelAnimationFrame(gameLoop);
     }
-  }
+  });
 
-  // Bullet-invader collisions
+  // Bullet collisions
   bullets.forEach((b, i) => {
     for (let j = 0; j < invaders.length; j++) {
       const inv = invaders[j];
@@ -146,12 +141,40 @@ function gameLoop() {
   bombs.forEach(b => drawEmoji(b.x, b.y, "✨", true));
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true));
 
-  if (invaders.length === 0) {
-    spawnInvaderGrid();
-  }
+  if (invaders.length === 0) spawnInvaderGrid();
 
   updateHUD();
   requestAnimationFrame(gameLoop);
 }
 
 gameLoop();
+
+// UI controls
+document.getElementById("pauseBtn").onclick = () => {
+  const paused = overlay.style.display === "block";
+  overlay.textContent = paused ? "" : "PAUSED";
+  overlay.style.display = paused ? "none" : "block";
+};
+
+document.getElementById("muteBtn").onclick = () => {
+  radio.muted = !radio.muted;
+  document.getElementById("muteBtn").textContent = radio.muted ? "🔇" : "🔊";
+};
+
+document.getElementById("toggleRadio").onclick = () => {
+  if (radio.paused) {
+    radio.play();
+    document.getElementById("toggleRadio").textContent = "Radio OFF";
+  } else {
+    radio.pause();
+    document.getElementById("toggleRadio").textContent = "Radio ON";
+  }
+};
+
+document.getElementById("loginBtn").onclick = () => {
+  document.getElementById("loginPopup").style.display = "block";
+};
+
+document.getElementById("closeLoginPopup").onclick = () => {
+  document.getElementById("loginPopup").style.display = "none";
+};
