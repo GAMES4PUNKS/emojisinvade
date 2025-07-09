@@ -1,3 +1,5 @@
+// game.js
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 400;
@@ -22,6 +24,7 @@ const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
 const overlay = document.getElementById("overlay");
 const radio = document.getElementById("radioStream");
+const gameOverOverlay = document.getElementById("gameOverOverlay");
 
 const emojiBank = "😀😅😇🤣😂🙃😍🥰😘🤪😜😝🧐🤓😎🤩🥳🥺😢😭😤😡🤬🤯😳🥵🥶😱🤗😥😰🤥🥱😪🤢🤠🤑🤕🤒😷🤧🤮😈👿👹🤡👻😺🎃🤖👾👽☠️😸😻🙀😿👀🎅🐶🐱🐭🐹🐰🦊🐻🐷🐮🐨🐻‍❄️🐼🐸🐵🙈🙉🙊🌍🌈⛄️🍏🍎🍐🍊🍒🍔🍟🧁🍩🍪⚽️🏀🏈⚾️🥎🏐❤️🧡💛💚💙💜☢️☣️🔞♥️".split('');
 
@@ -48,6 +51,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') right = true;
   if (e.key === ' ') shooting = true;
 });
+
 document.addEventListener('keyup', e => {
   if (e.key === 'ArrowLeft') left = false;
   if (e.key === 'ArrowRight') right = false;
@@ -55,7 +59,7 @@ document.addEventListener('keyup', e => {
 });
 
 function drawEmoji(x, y, emoji, flicker = false) {
-  ctx.font = `${gridSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', Arial, sans-serif`;
+  ctx.font = `${gridSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150));
@@ -71,7 +75,6 @@ function updateHUD() {
 function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Move player
   player.speedCounter++;
   if (player.speedCounter >= 4) {
     if (left && player.x > 0) player.x--;
@@ -79,7 +82,6 @@ function gameLoop() {
     player.speedCounter = 0;
   }
 
-  // Fire bullets
   if (bulletCooldown > 0) bulletCooldown--;
   if (shooting && bulletCooldown === 0 && bullets.length < 3) {
     bullets.push({ x: player.x, y: player.y - 1 });
@@ -87,19 +89,14 @@ function gameLoop() {
   }
 
   bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
+  bombs = bombs.map(b => ({ x: b.x, y: b.y + 1 })).filter(b => b.y < tileCount);
 
-  // Invader movement
   invaderTick++;
   if (invaderTick >= invaderSpeed) {
     let hitEdge = false;
     for (let i = 0; i < invaders.length; i++) {
       invaders[i].x += invaderDir;
       if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
-
-      // Drop bomb chance
-      if (Math.random() < 0.03) {
-        bombs.push({ x: invaders[i].x, y: invaders[i].y + 1 });
-      }
     }
     if (hitEdge) {
       invaderDir *= -1;
@@ -110,16 +107,12 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // Update bombs
-  bombs = bombs.map(b => ({ x: b.x, y: b.y + 1 })).filter(b => b.y < tileCount);
-  bombs.forEach((bomb) => {
-    if (bomb.x === player.x && bomb.y === player.y) {
-      document.getElementById("gameOverOverlay").style.display = "flex";
-      cancelAnimationFrame(gameLoop);
+  invaders.forEach(inv => {
+    if (Math.random() < 0.01) {
+      bombs.push({ x: inv.x, y: inv.y + 1 });
     }
   });
 
-  // Bullet collisions
   bullets.forEach((b, i) => {
     for (let j = 0; j < invaders.length; j++) {
       const inv = invaders[j];
@@ -136,12 +129,21 @@ function gameLoop() {
     }
   });
 
+  for (let b of bombs) {
+    if (b.x === player.x && b.y === player.y) {
+      gameOverOverlay.style.display = "flex";
+      return;
+    }
+  }
+
   drawEmoji(player.x, player.y, "💩");
   bullets.forEach(b => drawEmoji(b.x, b.y, "💥"));
   bombs.forEach(b => drawEmoji(b.x, b.y, "✨", true));
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true));
 
-  if (invaders.length === 0) spawnInvaderGrid();
+  if (invaders.length === 0) {
+    spawnInvaderGrid();
+  }
 
   updateHUD();
   requestAnimationFrame(gameLoop);
@@ -149,7 +151,6 @@ function gameLoop() {
 
 gameLoop();
 
-// UI controls
 document.getElementById("pauseBtn").onclick = () => {
   const paused = overlay.style.display === "block";
   overlay.textContent = paused ? "" : "PAUSED";
