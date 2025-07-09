@@ -16,6 +16,12 @@ const emojiBank = [
   "❤️","🧡","💛","💚","💙","💜","🤍","🤎","💔"
 ];
 
+// --- SPECIAL EMOJI SCORES ---
+const emojiBonusScores = {};
+for (let i = 0; i < emojiBank.length; i++) {
+  emojiBonusScores[emojiBank[i]] = 1000 + i * 50;
+}
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 400;
@@ -175,6 +181,89 @@ function togglePause() {
   }
 }
 
+// --- BONUS EMOJI ACROSS TOP LINE ---
+let bonusEmoji = null;
+// Structure: {emoji, x, y, dir, speed, bankIndex}
+let bonusTimer = 0;
+
+function maybeSpawnBonusEmoji() {
+  if (bonusEmoji !== null) return;
+  // Randomly decide whether to spawn (avg once every 5-10 seconds)
+  if (Math.random() < 1/240) {
+    const fromLeft = Math.random() < 0.5;
+    const idx = Math.floor(Math.random() * emojiBank.length);
+    bonusEmoji = {
+      emoji: emojiBank[idx],
+      x: fromLeft ? 0 : tileCount - 1,
+      y: 0,
+      dir: fromLeft ? 1 : -1,
+      speed: 0.5 + Math.random(), // random speed (cells per frame)
+      progress: 0, // sub-tile progress for smooth movement
+      bankIndex: idx
+    };
+  }
+}
+
+function updateBonusEmoji() {
+  if (!bonusEmoji) return;
+  bonusEmoji.progress += bonusEmoji.speed;
+  if (bonusEmoji.progress >= 1) {
+    bonusEmoji.x += bonusEmoji.dir;
+    bonusEmoji.progress = 0;
+  }
+  if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) {
+    bonusEmoji = null;
+  }
+}
+
+function drawBonusEmoji() {
+  if (!bonusEmoji) return;
+  let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress;
+  drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize + 8); // slightly bigger
+}
+
+function handleBulletBonusCollision() {
+  if (!bonusEmoji) return;
+  let hit = false;
+  bullets = bullets.filter(b => {
+    if (
+      Math.round(b.x) === Math.round(bonusEmoji.x) &&
+      b.y === bonusEmoji.y
+    ) {
+      let pts = emojiBonusScores[bonusEmoji.emoji] || 1000;
+      score += pts;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("high_score", highScore);
+      }
+      bonusTimer = 30;
+      bonusEmoji.showScore = pts;
+      hit = true;
+      return false;
+    }
+    return true;
+  });
+  if (hit) {
+    setTimeout(() => {
+      bonusEmoji = null;
+    }, 300);
+  }
+}
+function drawBonusScore() {
+  if (bonusEmoji && bonusEmoji.showScore && bonusTimer > 0) {
+    ctx.font = "bold 16px Arial";
+    ctx.fillStyle = "yellow";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    let drawX = (bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress) * gridSize + gridSize / 2;
+    ctx.fillText("+" + bonusEmoji.showScore, drawX, (bonusEmoji.y + 1) * gridSize - 2);
+    bonusTimer--;
+    if (bonusTimer <= 0) {
+      bonusEmoji.showScore = null;
+    }
+  }
+}
+
 // --- MAIN GAME LOOP ---
 function gameLoop() {
   if (isPaused) return;
@@ -201,14 +290,13 @@ function gameLoop() {
   bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
   bombs = bombs.map(b => ({ x: b.x, y: b.y + 1, emoji: b.emoji })).filter(b => b.y < tileCount);
 
-  // Invader movement
+  // Invader movement and bomb logic
   invaderTick++;
   if (invaderTick >= invaderSpeed) {
     let hitEdge = false;
     for (let i = 0; i < invaders.length; i++) {
       invaders[i].x += invaderDir;
       if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
-      // Bombs drop twice as often (0.004), each using a random emoji
       if (Math.random() < 0.004) {
         const bombEmoji = emojiBank[Math.floor(Math.random() * emojiBank.length)];
         bombs.push({ x: invaders[i].x, y: invaders[i].y, emoji: bombEmoji });
@@ -223,7 +311,7 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // --- Bullet <-> Invader collision
+  // Bullet <-> Invader collision
   bullets = bullets.filter((b, i) => {
     for (let j = 0; j < invaders.length; j++) {
       const inv = invaders[j];
@@ -240,8 +328,7 @@ function gameLoop() {
     return true;
   });
 
-  // --- Bomb & Bullet <-> Bunker cell collision
-  // Bombs
+  // Bomb collision with bunkers and player
   let bombsAfter = [];
   for (let b of bombs) {
     let hit = false;
@@ -252,7 +339,7 @@ function gameLoop() {
             bunker.cells[row][col] &&
             b.x === bunker.x + col && b.y === bunker.y + row
           ) {
-            bunker.cells[row][col] = false; // break the piece!
+            bunker.cells[row][col] = false;
             hit = true;
           }
         }
@@ -267,7 +354,7 @@ function gameLoop() {
   }
   bombs = bombsAfter;
 
-  // Bullets
+  // Bullet collision with bunkers (breaks piece)
   let bulletsAfter = [];
   for (let b of bullets) {
     let hit = false;
@@ -278,16 +365,22 @@ function gameLoop() {
             bunker.cells[row][col] &&
             b.x === bunker.x + col && b.y === bunker.y + row
           ) {
-            bunker.cells[row][col] = false; // break the piece!
+            bunker.cells[row][col] = false;
             hit = true;
           }
         }
       }
     }
-    if (!hit) bulletsAfter.push(b); // keep bullet if not stopped by bunker
-    // If hit, bullet disappears
+    if (!hit) bulletsAfter.push(b);
   }
   bullets = bulletsAfter;
+
+  // --- Bonus Emoji Logic ---
+  maybeSpawnBonusEmoji();
+  updateBonusEmoji();
+  drawBonusEmoji();
+  handleBulletBonusCollision();
+  drawBonusScore();
 
   // Draw player
   drawEmoji(player.x, player.y, "💩");
