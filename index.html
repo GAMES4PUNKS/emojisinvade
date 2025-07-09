@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>emojisinvade – Play & Listen</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: url('bgobe.jpg') center center fixed;
+      background-size: cover;
+      font-family: 'Orbitron', sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    canvas {
+      width: 90vmin;
+      height: 90vmin;
+      background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
+      box-shadow: 0 0 20px #a020f0;
+      margin-top: 1rem;
+    }
+    #overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      color: #fff;
+      background: rgba(0,0,0,0.7);
+      padding: 2rem 3rem;
+      border-radius: 1rem;
+      display: none;
+      z-index: 5;
+    }
+    #loginPopup {
+      display: none;
+      position: fixed;
+      top: 30%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.95);
+      border: 1px solid #888;
+      padding: 1rem;
+      border-radius: 10px;
+      z-index: 20;
+      color: white;
+    }
+    #loginPopup button {
+      margin: 0.5rem;
+      font-size: 1rem;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      background: #333;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" tabindex="0"></canvas>
+  <div id="overlay">PAUSED</div>
+  <div id="loginPopup">
+    <p>Select WAX Wallet</p>
+    <button onclick="alert('Anchor login')">Anchor</button>
+    <button onclick="alert('MyCloud login')">MyCloud</button>
+    <button onclick="alert('Wombat login')">Wombat</button>
+  </div>
+  <audio id="radioStream" loop autoplay>
+    <source src="http://stream.radiojar.com/2qm1fc5kb" type="audio/mpeg">
+  </audio>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = 400;
+    canvas.height = 400;
+    const gridSize = 20;
+    const tileCount = canvas.width / gridSize;
+    let player = { x: 10, y: 19 };
+    let invaders = [{ x: 10, y: 2 }];
+    let bullets = [];
+    let left = false, right = false, shooting = false;
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft') left = true;
+      if (e.key === 'ArrowRight') right = true;
+      if (e.key === ' ') shooting = true;
+    });
+    document.addEventListener('keyup', e => {
+      if (e.key === 'ArrowLeft') left = false;
+      if (e.key === 'ArrowRight') right = false;
+      if (e.key === ' ') shooting = false;
+    });
+
+    function drawEmoji(x, y, emoji) {
+      ctx.font = `${gridSize}px Orbitron`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(emoji, x * gridSize + gridSize / 2, y * gridSize + gridSize / 2);
+    }
+
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Move player
+      if (left && player.x > 0) player.x--;
+      if (right && player.x < tileCount - 1) player.x++;
+      if (shooting && bullets.length < 5) bullets.push({ x: player.x, y: player.y - 1 });
+
+      // Move bullets
+      bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
+
+      // Draw invaders
+      invaders.forEach(inv => drawEmoji(inv.x, inv.y, "👾"));
+
+      // Draw bullets
+      bullets.forEach(b => drawEmoji(b.x, b.y, "💥"));
+
+      // Draw player
+      drawEmoji(player.x, player.y, "🚀");
+
+      requestAnimationFrame(gameLoop);
+    }
+    gameLoop();
+  </script>
+</body>
+</html>
