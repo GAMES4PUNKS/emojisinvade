@@ -1,188 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Emoji Invaders Deluxe</title>
-  <meta name="viewport" content="width=400, initial-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>emojisinvade – Play & Listen</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
   <style>
     body {
-      background: #222;
-      color: #fff;
-      font-family: 'Orbitron', 'Arial', sans-serif;
       margin: 0;
-      padding: 0;
+      background: url('bgobe.jpg') center center fixed;
+      background-size: cover;
+      font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
+      color: white;
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
     }
-    .hud {
-      width: 400px;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      margin: 8px 0 0 0;
-      font-size: 18px;
-    }
-    .hud .section {
-      margin: 2px 0;
-    }
-    #gameCanvas {
-      background: #18181a;
-      border: 4px solid #444;
+    canvas {
+      width: 90vmin;
+      height: 90vmin;
+      max-width: 90vw;
+      max-height: 90vw;
+      background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
+      box-shadow: 0 0 20px #a020f0;
+      margin-top: 1rem;
       display: block;
-      margin: 14px 0 0 0;
-      image-rendering: pixelated;
-      touch-action: none;
-      box-shadow: 0 4px 36px #000a;
     }
-    .button-row {
-      width: 400px;
+    #statusBarCombined {
       display: flex;
-      justify-content: space-between;
-      margin: 10px 0 0 0;
+      font-size: 1rem;
+      color: white;
+      margin-top: 0.5rem;
+      justify-content: center;
+      align-items: center;
+      gap: 0.7em;
+      flex-wrap: wrap;
+      font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
     }
-    button, select {
-      font-size: 16px;
-      background: #333;
-      color: #fff;
-      border: 2px solid #555;
-      border-radius: 5px;
-      padding: 5px 12px;
-      margin: 0 2px;
+    #statusBarCombined span,
+    #statusBarCombined button,
+    #statusBarCombined select {
+      font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
+    }
+    #statusBarCombined button,
+    #statusBarCombined select {
+      background: none;
+      color: white;
+      border: 1px solid #a020f0;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
       cursor: pointer;
-      transition: background 0.2s;
     }
-    button:active, button:focus, select:active, select:focus {
-      background: #555;
-      outline: none;
+    .visually-hidden {
+      position: absolute !important;
+      height: 1px; width: 1px;
+      overflow: hidden;
+      clip: rect(1px, 1px, 1px, 1px);
     }
     #overlay, #gameOverOverlay {
       position: absolute;
-      left: 0; right: 0;
-      top: 0; bottom: 0;
-      width: 400px;
-      height: 400px;
-      margin: auto;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      color: #fff;
+      background: rgba(0,0,0,0.7);
+      padding: 2rem 3rem;
+      border-radius: 1rem;
       display: none;
       z-index: 10;
-      align-items: center;
-      justify-content: center;
-      background: rgba(24,24,26,0.85);
-      color: #fff;
+      font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
       text-align: center;
-      font-size: 2em;
-      font-weight: bold;
-      letter-spacing: 2px;
-      border-radius: 6px;
-      flex-direction: column;
     }
-    #gameOverOverlay h2 {
-      margin: 0 0 8px 0;
-      font-size: 2.4em;
-      color: #ff8080;
+    #game-container {
+      position: relative;
+      width: 90vmin;
+      max-width: 90vw;
+      margin-top: 1rem;
+      margin-bottom: 1rem;
     }
     #loginPopup {
       display: none;
       position: fixed;
+      top: 30%;
       left: 50%;
-      top: 50%;
-      transform: translate(-50%,-50%);
-      background: #222;
-      color: #fff;
-      border: 2px solid #444;
-      border-radius: 8px;
-      padding: 20px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.95);
+      border: 1px solid #888;
+      padding: 1rem;
+      border-radius: 10px;
       z-index: 20;
-      width: 320px;
+      color: white;
+      min-width: 250px;
+      text-align: center;
     }
-    .closePopup {
-      float: right;
-      cursor: pointer;
-      color: #f44;
-      font-size: 20px;
-    }
-    #leaderboardDisplay, #achievementsDisplay {
-      background: #18181a;
-      color: #eee;
+    #loginPopup button {
+      margin: 0.5rem;
+      font-size: 1rem;
+      padding: 0.5rem 1rem;
+      border: none;
       border-radius: 6px;
-      margin: 14px 0 0 0;
-      padding: 8px 12px;
-      width: 400px;
-      min-height: 32px;
-      font-size: 1em;
+      background: #333;
+      color: white;
+      cursor: pointer;
     }
-    #leaderboardDisplay h3 {
-      margin: 0 0 4px 0;
-      font-size: 1.1em;
-      color: #7df;
-    }
-    .achievement {
-      color: #fff845;
-      font-size: 0.95em;
-      margin-bottom: 2px;
-    }
-    #powerupDisplay {
-      display: inline-block;
-      min-width: 60px;
-      letter-spacing: 6px;
-      font-size: 1.2em;
-    }
-    @media (max-width: 420px) {
-      body, .hud, .button-row, #leaderboardDisplay, #achievementsDisplay {
-        width: 100vw !important;
-        min-width: unset;
-        max-width: unset;
-      }
-      #gameCanvas, #overlay, #gameOverOverlay {
-        width: 100vw !important;
-        height: 100vw !important;
-        max-width: 100vw !important;
-        max-height: 100vw !important;
-        min-width: unset;
-        min-height: unset;
-      }
+    #closeLoginPopup {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      font-size: 20px;
+      color: white;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <div class="hud">
-    <div class="section" id="scoreDisplay">Score: 0</div>
-    <div class="section" id="livesDisplay">Lives: 3</div>
-    <div class="section" id="highScoreDisplay">High Score: 0</div>
-    <div class="section" id="smartBombDisplay">💣</div>
-    <div class="section" id="powerupDisplay"></div>
+  <div id="game-container">
+    <canvas id="gameCanvas" tabindex="0"></canvas>
+    <div id="overlay">PAUSED</div>
+    <div id="gameOverOverlay">💀 GAME OVER 💀</div>
   </div>
-  <canvas id="gameCanvas" width="400" height="400"></canvas>
-  <div id="overlay"></div>
-  <div id="gameOverOverlay"></div>
-  <div class="button-row">
-    <button id="pauseBtn">⏸ Pause</button>
+
+  <div id="statusBarCombined">
+    <span id="scoreDisplay">Score: 0</span>
+    <span id="highScoreDisplay">High Score: 0</span>
+    <button id="pauseBtn">⏸️</button>
     <button id="muteBtn">🔊</button>
-    <button id="toggleRadio">Radio ON</button>
-    <button id="loginBtn">Login</button>
+    <label for="speedSelect" class="visually-hidden">Game Speed</label>
     <select id="speedSelect">
       <option value="40">Normal</option>
-      <option value="30">Fast</option>
-      <option value="20">Faster</option>
-      <option value="10">Insane</option>
+      <option value="20">Fast</option>
+      <option value="10">Turbo</option>
     </select>
+    <button id="toggleRadio">Radio OFF</button>
+    <button id="loginBtn">LOG IN</button>
   </div>
-  <div id="leaderboardDisplay"></div>
-  <div id="achievementsDisplay"></div>
 
-  <!-- Popup for login/profile (demo placeholder) -->
   <div id="loginPopup">
-    <span class="closePopup" id="closeLoginPopup">&times;</span>
-    <h3>Login / Profile</h3>
-    <p>Feature coming soon!</p>
+    <span id="closeLoginPopup">&times;</span>
+    <p>Select WAX Wallet</p>
+    <button onclick="alert('Login with Anchor')">Anchor</button>
+    <button onclick="alert('Login with MyCloud')">MyCloud</button>
+    <button onclick="alert('Login with Wombat')">Wombat</button>
   </div>
 
-  <!-- Hidden audio for music/radio -->
-  <audio id="radioStream" src="https://icecast.omroep.nl/radio2-bb-mp3" loop autoplay></audio>
-
-  <!-- Scripts -->
+  <audio id="radioStream" loop>
+    <source src="http://stream.radiojar.com/2qm1fc5kb" type="audio/mpeg">
+  </audio>
   <script src="game.js"></script>
 </body>
 </html>
