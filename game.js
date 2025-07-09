@@ -1,8 +1,24 @@
-// game.js — Fixed emoji rendering for all major platforms
+// emoji invaders game - cross-platform emoji safe set
+
+const emojiBank = [
+  "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
+  "😍","🥰","😘","😗","😙","😚","😐","😑","😶","🙄","😏","😣","😥","😮",
+  "🤐","😯","😪","😫","😴","😌","😛","😜","😝","🤤","😒","😓","😔","😕",
+  "🤑","😲","🙁","😖","😞","😟","😤","😢","😭","😦","😧","😨","😩","🤯",
+  "😬","😰","😱","😳","🤪","😵","😡","😠","🤬","😷","🤒","🤕","🤢","🤮",
+  "🤧","🥵","🥶","🥴","🤠","🥳","🥺","🤓","🧐","😈","👿","👹","👺","👻",
+  "💀","☠️","👽","👾","🤖","👄","🦷","👀",
+  "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸",
+  "🐵","🦍","🦄","🐞","🐍",
+  "🍏","🍎","🍐","🍊","🍋","🍇","🍓","🍒","🍑","🥭","🍍",
+  "🧁","🍰","🍔","🍟","🍕","🌭","🍩","🍪",
+  "⚽️","🏀","🏈","⚾️","🥎","🏐","🎱","🎲","🎯","🎳",
+  "🌦️","🌧️","⛈️","🌩️","🌨️","❄️","☃️","⛄️","🌈",
+  "❤️","🧡","💛","💚","💙","💜","🤍","🤎","💔"
+];
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-// Set both the canvas attribute and style for sharpness and emoji compatibility
 canvas.width = 400;
 canvas.height = 400;
 
@@ -27,9 +43,6 @@ const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 const radio = document.getElementById("radioStream");
 
-// Use only emojis guaranteed to work across all platforms
-const emojiBank = "😀😎😂😜🤖👻💀👽👾🎃🔥✨💩🎯⚡️🚀".split('');
-
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 10; row++) {
@@ -49,20 +62,19 @@ spawnInvaderGrid();
 let left = false, right = false, shooting = false;
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft') left = true;
-  if (e.key === 'ArrowRight') right = true;
-  if (e.key === ' ') shooting = true;
+  if (e.key === 'ArrowLeft' || e.key === 'a') left = true;
+  if (e.key === 'ArrowRight' || e.key === 'd') right = true;
+  if (e.key === ' ' || e.key === 'z' || e.key === 'j') shooting = true;
+  if (e.key.toLowerCase() === 'p') togglePause();
 });
-
 document.addEventListener('keyup', e => {
-  if (e.key === 'ArrowLeft') left = false;
-  if (e.key === 'ArrowRight') right = false;
-  if (e.key === ' ') shooting = false;
+  if (e.key === 'ArrowLeft' || e.key === 'a') left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd') right = false;
+  if (e.key === ' ' || e.key === 'z' || e.key === 'j') shooting = false;
 });
 
 function drawEmoji(x, y, emoji, flicker = false) {
-  // Use an emoji-capable font stack for canvas!
-  ctx.font = `${gridSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Orbitron', 'Segoe UI', sans-serif`;
+  ctx.font = `${gridSize}px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150));
@@ -75,10 +87,48 @@ function updateHUD() {
   highScoreDisplay.textContent = `High Score: ${highScore}`;
 }
 
+function resetGame() {
+  score = 0;
+  bullets = [];
+  bombs = [];
+  player.x = 10;
+  player.y = 19;
+  player.speedCounter = 0;
+  spawnInvaderGrid();
+  updateHUD();
+}
+
+function gameOver() {
+  gameOverOverlay.style.display = 'flex';
+  setTimeout(() => {
+    gameOverOverlay.style.display = 'none';
+    resetGame();
+    isPaused = false;
+    reqId = requestAnimationFrame(gameLoop);
+  }, 1500);
+}
+
+let isPaused = false;
+let reqId = null;
+
+function togglePause() {
+  if (isPaused) {
+    isPaused = false;
+    overlay.style.display = "none";
+    reqId = requestAnimationFrame(gameLoop);
+  } else {
+    isPaused = true;
+    overlay.textContent = "PAUSED";
+    overlay.style.display = "block";
+    if (reqId) cancelAnimationFrame(reqId);
+  }
+}
+
 function gameLoop() {
+  if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Player movement
+  // Player movement (slowed)
   player.speedCounter++;
   if (player.speedCounter >= 4) {
     if (left && player.x > 0) player.x--;
@@ -125,7 +175,7 @@ function gameLoop() {
           highScore = score;
           localStorage.setItem("high_score", highScore);
         }
-        return false; // Remove this bullet
+        return false;
       }
     }
     return true;
@@ -134,15 +184,7 @@ function gameLoop() {
   // Bomb <-> Player collision
   for (let b of bombs) {
     if (b.x === player.x && b.y === player.y) {
-      gameOverOverlay.style.display = 'flex';
-      setTimeout(() => {
-        gameOverOverlay.style.display = 'none';
-        score = 0;
-        bullets = [];
-        bombs = [];
-        spawnInvaderGrid();
-        updateHUD();
-      }, 1500);
+      gameOver();
       return;
     }
   }
@@ -155,18 +197,15 @@ function gameLoop() {
   if (invaders.length === 0) spawnInvaderGrid();
 
   updateHUD();
-  requestAnimationFrame(gameLoop);
+  reqId = requestAnimationFrame(gameLoop);
 }
 
+updateHUD();
 gameLoop();
 
 // UI Buttons
 
-document.getElementById("pauseBtn").onclick = () => {
-  const paused = overlay.style.display === "block";
-  overlay.textContent = paused ? "" : "PAUSED";
-  overlay.style.display = paused ? "none" : "block";
-};
+document.getElementById("pauseBtn").onclick = togglePause;
 
 document.getElementById("muteBtn").onclick = () => {
   radio.muted = !radio.muted;
@@ -189,4 +228,18 @@ document.getElementById("loginBtn").onclick = () => {
 
 document.getElementById("closeLoginPopup").onclick = () => {
   document.getElementById("loginPopup").style.display = "none";
+};
+
+window.addEventListener('keydown', function(e) {
+  if (e.key === "Escape") {
+    const popup = document.getElementById("loginPopup");
+    if (popup && popup.style.display === "block") {
+      popup.style.display = "none";
+    }
+  }
+});
+
+// Speed select (makes invaders move faster/slower)
+document.getElementById("speedSelect").onchange = (e) => {
+  invaderSpeed = Number(e.target.value);
 };
