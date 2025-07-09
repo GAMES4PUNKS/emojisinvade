@@ -59,7 +59,7 @@ document.addEventListener('keyup', e => {
 });
 
 function drawEmoji(x, y, emoji, flicker = false) {
-  ctx.font = `${gridSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", Arial, sans-serif`;
+  ctx.font = `${gridSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150));
