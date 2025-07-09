@@ -2,34 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Emoji Invaders</title>
-  <meta name="viewport" content="width=420, initial-scale=1.0">
+  <title>Emoji Invaders Deluxe</title>
+  <meta name="viewport" content="width=400, initial-scale=1.0, user-scalable=no">
   <style>
     body {
       background: #222;
       color: #fff;
-      font-family: Arial, sans-serif;
+      font-family: 'Orbitron', 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin: 0;
       min-height: 100vh;
     }
-    #hud {
+    .hud {
       width: 400px;
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
-      margin: 10px 0 0 0;
+      margin: 8px 0 0 0;
       font-size: 18px;
+    }
+    .hud .section {
+      margin: 2px 0;
     }
     #gameCanvas {
       background: #18181a;
-      border: 3px solid #444;
+      border: 4px solid #444;
       display: block;
       margin: 14px 0 0 0;
       image-rendering: pixelated;
-      box-shadow: 0 4px 24px #000a;
+      touch-action: none;
+      box-shadow: 0 4px 36px #000a;
+    }
+    .button-row {
+      width: 400px;
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0 0 0;
+    }
+    button, select {
+      font-size: 16px;
+      background: #333;
+      color: #fff;
+      border: 2px solid #555;
+      border-radius: 5px;
+      padding: 5px 12px;
+      margin: 0 2px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:active, button:focus, select:active, select:focus {
+      background: #555;
+      outline: none;
     }
     #overlay, #gameOverOverlay {
       position: absolute;
@@ -47,20 +74,66 @@
       text-align: center;
       font-size: 2em;
       font-weight: bold;
+      letter-spacing: 2px;
       border-radius: 6px;
       flex-direction: column;
     }
     #gameOverOverlay h2 {
       margin: 0 0 8px 0;
-      font-size: 2.1em;
+      font-size: 2.4em;
       color: #ff8080;
     }
-    #scoreDisplay, #highScoreDisplay {
-      padding: 0 8px;
+    #loginPopup {
+      display: none;
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%,-50%);
+      background: #222;
+      color: #fff;
+      border: 2px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      z-index: 20;
+      width: 320px;
+    }
+    .closePopup {
+      float: right;
+      cursor: pointer;
+      color: #f44;
+      font-size: 20px;
+    }
+    #leaderboardDisplay, #achievementsDisplay {
+      background: #18181a;
+      color: #eee;
+      border-radius: 6px;
+      margin: 14px 0 0 0;
+      padding: 8px 12px;
+      width: 400px;
+      min-height: 32px;
+      font-size: 1em;
+    }
+    #leaderboardDisplay h3 {
+      margin: 0 0 4px 0;
+      font-size: 1.1em;
+      color: #7df;
+    }
+    .achievement {
+      color: #fff845;
+      font-size: 0.95em;
+      margin-bottom: 2px;
+    }
+    #powerupDisplay {
+      display: inline-block;
+      min-width: 60px;
+      letter-spacing: 6px;
+      font-size: 1.2em;
     }
     @media (max-width: 420px) {
-      body, #hud {
+      body, .hud, .button-row, #leaderboardDisplay, #achievementsDisplay {
         width: 100vw !important;
+        min-width: unset;
+        max-width: unset;
       }
       #gameCanvas, #overlay, #gameOverOverlay {
         width: 100vw !important;
@@ -74,13 +147,42 @@
   </style>
 </head>
 <body>
-  <div id="hud">
-    <div id="scoreDisplay">Score: 0</div>
-    <div id="highScoreDisplay">High Score: 0</div>
+  <div class="hud">
+    <div class="section" id="scoreDisplay">Score: 0</div>
+    <div class="section" id="livesDisplay">Lives: 3</div>
+    <div class="section" id="highScoreDisplay">High Score: 0</div>
+    <div class="section" id="smartBombDisplay">💣</div>
+    <div class="section" id="powerupDisplay"></div>
   </div>
   <canvas id="gameCanvas" width="400" height="400"></canvas>
   <div id="overlay"></div>
   <div id="gameOverOverlay"></div>
+  <div class="button-row">
+    <button id="pauseBtn">⏸ Pause</button>
+    <button id="muteBtn">🔊</button>
+    <button id="toggleRadio">Radio ON</button>
+    <button id="loginBtn">Login</button>
+    <select id="speedSelect">
+      <option value="40">Normal</option>
+      <option value="30">Fast</option>
+      <option value="20">Faster</option>
+      <option value="10">Insane</option>
+    </select>
+  </div>
+  <div id="leaderboardDisplay"></div>
+  <div id="achievementsDisplay"></div>
+
+  <!-- Popup for login/profile (demo placeholder) -->
+  <div id="loginPopup">
+    <span class="closePopup" id="closeLoginPopup">&times;</span>
+    <h3>Login / Profile</h3>
+    <p>Feature coming soon!</p>
+  </div>
+
+  <!-- Hidden audio for music/radio -->
+  <audio id="radioStream" src="https://icecast.omroep.nl/radio2-bb-mp3" loop autoplay></audio>
+
+  <!-- Scripts -->
   <script src="game.js"></script>
 </body>
 </html>
