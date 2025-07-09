@@ -46,12 +46,37 @@ const radio = document.getElementById("radioStream");
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 
-// Bunkers/barriers: smaller and higher, so player sits visually over them
-const bunkers = [
-  { x: 4, y: tileCount - 5, health: 3, maxHealth: 3 },
-  { x: Math.floor(tileCount / 2), y: tileCount - 5, health: 3, maxHealth: 3 },
-  { x: tileCount - 5, y: tileCount - 5, health: 3, maxHealth: 3 }
-];
+// Calculate y-position for bunkers: 40% closer to bottom (between previous and bottom)
+function getBunkerY() {
+  // tileCount-1 = bottom row, tileCount-5 = previous position
+  // Interpolate: newY = previousY + 0.4*(bottomY - previousY)
+  const previousY = tileCount - 5;
+  const bottomY = tileCount - 2; // -1 for player, -2 for just above player
+  return Math.round(previousY + 0.4 * (bottomY - previousY));
+}
+
+// Calculate evenly spaced x positions for 3 bunkers
+function getBunkerXs() {
+  // Use proportional positions for even spacing: 1/6, 1/2, 5/6 of width
+  return [
+    Math.round(tileCount * 1 / 6),
+    Math.round(tileCount * 1 / 2),
+    Math.round(tileCount * 5 / 6)
+  ];
+}
+
+// Bunkers/barriers: smaller and now evenly spaced and lower
+function buildBunkers() {
+  const y = getBunkerY();
+  const xs = getBunkerXs();
+  return [
+    { x: xs[0], y, health: 3, maxHealth: 3 },
+    { x: xs[1], y, health: 3, maxHealth: 3 },
+    { x: xs[2], y, health: 3, maxHealth: 3 }
+  ];
+}
+
+let bunkers = buildBunkers();
 
 // Responsive bunker draw (smaller barriers, positioned higher)
 function drawBunker(bunker) {
@@ -116,9 +141,8 @@ document.addEventListener('keyup', e => {
 });
 
 function resetBunkers() {
-  for (const bunker of bunkers) {
-    bunker.health = bunker.maxHealth;
-  }
+  // Recreate bunkers for new positions/sizes
+  bunkers = buildBunkers();
 }
 
 function resetGame() {
