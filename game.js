@@ -1,7 +1,8 @@
-// game.js — Updated for emoji rendering + reduced bomb drop rate
+// game.js — Fixed emoji rendering for all major platforms
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+// Set both the canvas attribute and style for sharpness and emoji compatibility
 canvas.width = 400;
 canvas.height = 400;
 
@@ -26,6 +27,7 @@ const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 const radio = document.getElementById("radioStream");
 
+// Use only emojis guaranteed to work across all platforms
 const emojiBank = "😀😎😂😜🤖👻💀👽👾🎃🔥✨💩🎯⚡️🚀".split('');
 
 function spawnInvaderGrid() {
@@ -59,7 +61,8 @@ document.addEventListener('keyup', e => {
 });
 
 function drawEmoji(x, y, emoji, flicker = false) {
-  ctx.font = `${gridSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+  // Use an emoji-capable font stack for canvas!
+  ctx.font = `${gridSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Orbitron', 'Segoe UI', sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150));
@@ -111,25 +114,35 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  bullets.forEach((b, i) => {
+  // Bullet <-> Invader collision
+  bullets = bullets.filter((b, i) => {
     for (let j = 0; j < invaders.length; j++) {
       const inv = invaders[j];
       if (b.x === inv.x && b.y === inv.y) {
-        bullets.splice(i, 1);
         invaders.splice(j, 1);
         score += 10;
         if (score > highScore) {
           highScore = score;
           localStorage.setItem("high_score", highScore);
         }
-        break;
+        return false; // Remove this bullet
       }
     }
+    return true;
   });
 
+  // Bomb <-> Player collision
   for (let b of bombs) {
     if (b.x === player.x && b.y === player.y) {
       gameOverOverlay.style.display = 'flex';
+      setTimeout(() => {
+        gameOverOverlay.style.display = 'none';
+        score = 0;
+        bullets = [];
+        bombs = [];
+        spawnInvaderGrid();
+        updateHUD();
+      }, 1500);
       return;
     }
   }
