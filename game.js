@@ -46,56 +46,50 @@ const radio = document.getElementById("radioStream");
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 
-// Calculate y-position for bunkers: 40% closer to bottom (between previous and bottom)
+// --- BUNKERS AS CELL GRIDS ---
 function getBunkerY() {
-  // tileCount-1 = bottom row, tileCount-5 = previous position
-  // Interpolate: newY = previousY + 0.4*(bottomY - previousY)
   const previousY = tileCount - 5;
-  const bottomY = tileCount - 2; // -1 for player, -2 for just above player
+  const bottomY = tileCount - 2;
   return Math.round(previousY + 0.4 * (bottomY - previousY));
 }
-
-// Calculate evenly spaced x positions for 3 bunkers
 function getBunkerXs() {
-  // Use proportional positions for even spacing: 1/6, 1/2, 5/6 of width
   return [
     Math.round(tileCount * 1 / 6),
     Math.round(tileCount * 1 / 2),
     Math.round(tileCount * 5 / 6)
   ];
 }
-
-// Bunkers/barriers: smaller and now evenly spaced and lower
+const BUNKER_W = 6, BUNKER_H = 3;
+function makeCells() {
+  return Array.from({length: BUNKER_H}, () => Array(BUNKER_W).fill(true));
+}
 function buildBunkers() {
   const y = getBunkerY();
   const xs = getBunkerXs();
   return [
-    { x: xs[0], y, health: 3, maxHealth: 3 },
-    { x: xs[1], y, health: 3, maxHealth: 3 },
-    { x: xs[2], y, health: 3, maxHealth: 3 }
+    { x: xs[0] - 3, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() },
+    { x: xs[1] - 3, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() },
+    { x: xs[2] - 3, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() }
   ];
 }
-
 let bunkers = buildBunkers();
 
-// Responsive bunker draw (smaller barriers, positioned lower)
 function drawBunker(bunker) {
-  if (bunker.health <= 0) return;
-  // Smaller: about 1/7 of canvas width
-  const size = Math.floor(canvas.width / 7);
-  ctx.save();
-  ctx.globalAlpha = Math.max(0.5, bunker.health / bunker.maxHealth); // fade if damaged
-  ctx.drawImage(
-    shitImg,
-    bunker.x * gridSize + gridSize / 2 - size / 2,
-    bunker.y * gridSize + gridSize / 2 - size / 2,
-    size,
-    size
-  );
-  ctx.restore();
+  for (let row = 0; row < bunker.height; row++) {
+    for (let col = 0; col < bunker.width; col++) {
+      if (bunker.cells[row][col]) {
+        ctx.drawImage(
+          shitImg,
+          (bunker.x + col) * gridSize,
+          (bunker.y + row) * gridSize,
+          gridSize, gridSize
+        );
+      }
+    }
+  }
 }
 
-// Responsive emoji draw for player and game objects
+// --- DRAW GAME OBJECTS ---
 function drawEmoji(x, y, emoji, flicker = false, customSize = null) {
   ctx.font = (customSize ? customSize : gridSize) + "px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif";
   ctx.textAlign = 'center';
@@ -123,7 +117,6 @@ function spawnInvaderGrid() {
     }
   }
 }
-
 spawnInvaderGrid();
 
 let left = false, right = false, shooting = false;
@@ -141,7 +134,6 @@ document.addEventListener('keyup', e => {
 });
 
 function resetBunkers() {
-  // Recreate bunkers for new positions/sizes
   bunkers = buildBunkers();
 }
 
@@ -183,8 +175,7 @@ function togglePause() {
   }
 }
 
-// --- Bomb logic: make bombs fall more commonly and use random invader emoji for bombs ---
-
+// --- MAIN GAME LOOP ---
 function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -217,9 +208,8 @@ function gameLoop() {
     for (let i = 0; i < invaders.length; i++) {
       invaders[i].x += invaderDir;
       if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
-      // Make bombs drop twice as often (100% more): increase probability and use random emoji
-      if (Math.random() < 0.004) { // was 0.002, now 0.004
-        // Pick a random emoji for the bomb from the emojiBank
+      // Bombs drop twice as often (0.004), each using a random emoji
+      if (Math.random() < 0.004) {
         const bombEmoji = emojiBank[Math.floor(Math.random() * emojiBank.length)];
         bombs.push({ x: invaders[i].x, y: invaders[i].y, emoji: bombEmoji });
       }
@@ -233,7 +223,7 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // Bullet <-> Invader collision
+  // --- Bullet <-> Invader collision
   bullets = bullets.filter((b, i) => {
     for (let j = 0; j < invaders.length; j++) {
       const inv = invaders[j];
@@ -250,22 +240,25 @@ function gameLoop() {
     return true;
   });
 
-  // Bomb collision: check bunkers first!
+  // --- Bomb & Bullet <-> Bunker cell collision
+  // Bombs
   let bombsAfter = [];
   for (let b of bombs) {
     let hit = false;
     for (const bunker of bunkers) {
-      if (
-        bunker.health > 0 &&
-        b.x >= bunker.x - 1 && b.x <= bunker.x + 1 && // 3-tile wide hitbox
-        b.y === bunker.y
-      ) {
-        bunker.health -= 1;
-        hit = true;
-        break;
+      for (let row = 0; row < bunker.height; row++) {
+        for (let col = 0; col < bunker.width; col++) {
+          if (
+            bunker.cells[row][col] &&
+            b.x === bunker.x + col && b.y === bunker.y + row
+          ) {
+            bunker.cells[row][col] = false; // break the piece!
+            hit = true;
+          }
+        }
       }
     }
-    if (hit) continue; // bomb destroyed by bunker
+    if (hit) continue;
     if (b.x === player.x && b.y === player.y) {
       gameOver();
       return;
@@ -274,13 +267,35 @@ function gameLoop() {
   }
   bombs = bombsAfter;
 
-  // Draw player as small emoji, above the bunkers visually
+  // Bullets
+  let bulletsAfter = [];
+  for (let b of bullets) {
+    let hit = false;
+    for (const bunker of bunkers) {
+      for (let row = 0; row < bunker.height; row++) {
+        for (let col = 0; col < bunker.width; col++) {
+          if (
+            bunker.cells[row][col] &&
+            b.x === bunker.x + col && b.y === bunker.y + row
+          ) {
+            bunker.cells[row][col] = false; // break the piece!
+            hit = true;
+          }
+        }
+      }
+    }
+    if (!hit) bulletsAfter.push(b); // keep bullet if not stopped by bunker
+    // If hit, bullet disappears
+  }
+  bullets = bulletsAfter;
+
+  // Draw player
   drawEmoji(player.x, player.y, "💩");
 
   // Draw bullets
   bullets.forEach(b => drawEmoji(b.x, b.y, "💥"));
 
-  // Draw bombs - now uses emoji per bomb
+  // Draw bombs (emoji per bomb)
   bombs.forEach(b => drawEmoji(b.x, b.y, b.emoji, true));
 
   // Draw invaders
@@ -295,7 +310,7 @@ function gameLoop() {
 updateHUD();
 gameLoop();
 
-// UI Buttons
+// --- UI Buttons ---
 
 document.getElementById("pauseBtn").onclick = togglePause;
 
@@ -331,7 +346,6 @@ window.addEventListener('keydown', function(e) {
   }
 });
 
-// Speed select (makes invaders move faster/slower)
 document.getElementById("speedSelect").onchange = (e) => {
   invaderSpeed = Number(e.target.value);
 };
