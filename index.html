@@ -10,7 +10,7 @@
       margin: 0;
       background: url('bgobe.jpg') center center fixed;
       background-size: cover;
-      font-family: 'Orbitron', 'Segoe UI', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+      font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
       color: white;
       display: flex;
       flex-direction: column;
@@ -20,11 +20,12 @@
     canvas {
       width: 90vmin;
       height: 90vmin;
+      max-width: 90vw;
+      max-height: 90vw;
       background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
       box-shadow: 0 0 20px #a020f0;
       margin-top: 1rem;
-      /* Add emoji fonts for canvas fallback */
-      font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Orbitron', sans-serif;
+      display: block;
     }
     #statusBarCombined {
       display: flex;
@@ -35,12 +36,12 @@
       align-items: center;
       gap: 0.7em;
       flex-wrap: wrap;
-      font-family: 'Orbitron', 'Segoe UI', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+      font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
     }
     #statusBarCombined span,
     #statusBarCombined button,
     #statusBarCombined select {
-      font-family: 'Orbitron', 'Segoe UI', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+      font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
     }
     #statusBarCombined button,
     #statusBarCombined select {
@@ -70,6 +71,14 @@
       display: none;
       z-index: 10;
       font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
+      text-align: center;
+    }
+    #game-container {
+      position: relative;
+      width: 90vmin;
+      max-width: 90vw;
+      margin-top: 1rem;
+      margin-bottom: 1rem;
     }
     #loginPopup {
       display: none;
@@ -107,9 +116,11 @@
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas" tabindex="0"></canvas>
-  <div id="overlay">PAUSED</div>
-  <div id="gameOverOverlay">💀 GAME OVER 💀</div>
+  <div id="game-container">
+    <canvas id="gameCanvas" tabindex="0"></canvas>
+    <div id="overlay">PAUSED</div>
+    <div id="gameOverOverlay">💀 GAME OVER 💀</div>
+  </div>
 
   <div id="statusBarCombined">
     <span id="scoreDisplay">Score: 0</span>
@@ -118,9 +129,9 @@
     <button id="muteBtn">🔊</button>
     <label for="speedSelect" class="visually-hidden">Game Speed</label>
     <select id="speedSelect">
-      <option value="250">Normal</option>
-      <option value="120">Fast</option>
-      <option value="60">Turbo</option>
+      <option value="40">Normal</option>
+      <option value="20">Fast</option>
+      <option value="10">Turbo</option>
     </select>
     <button id="toggleRadio">Radio OFF</button>
     <button id="loginBtn">LOG IN</button>
