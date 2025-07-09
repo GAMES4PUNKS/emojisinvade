@@ -26,7 +26,8 @@ const overlay = document.getElementById("overlay");
 const radio = document.getElementById("radioStream");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 
-const emojiBank = "😀😅😇🤣😂🙃😍🥰😘🤪😜😝🧐🤓😎🤩🥳🥺😢😭😤😡🤬🤯😳🥵🥶😱🤗😥😰🤥🥱😪🤢🤠🤑🤕🤒😷🤧🤮😈👿👹🤡👻😺🎃🤖👾👽☠️😸😻🙀😿👀🎅🐶🐱🐭🐹🐰🦊🐻🐷🐮🐨🐻‍❄️🐼🐸🐵🙈🙉🙊🌍🌈⛄️🍏🍎🍐🍊🍒🍔🍟🧁🍩🍪⚽️🏀🏈⚾️🥎🏐❤️🧡💛💚💙💜☢️☣️🔞♥️".split('');
+// ✅ Safe universal emoji set
+const emojiBank = "😀😂😎🤖👾👻💩🎃🐱🐶🦊🐼🐸🌍🍕⚽️🏀❤️💥✨".split('');
 
 function spawnInvaderGrid() {
   invaders = [];
@@ -59,7 +60,7 @@ document.addEventListener('keyup', e => {
 });
 
 function drawEmoji(x, y, emoji, flicker = false) {
-  ctx.font = `${gridSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+  ctx.font = `${gridSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150));
@@ -107,8 +108,9 @@ function gameLoop() {
     invaderTick = 0;
   }
 
+  // 💣 Reduce bomb rate
   invaders.forEach(inv => {
-    if (Math.random() < 0.01) {
+    if (Math.random() < 0.002) {
       bombs.push({ x: inv.x, y: inv.y + 1 });
     }
   });
