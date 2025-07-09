@@ -24,6 +24,36 @@
       box-shadow: 0 0 20px #a020f0;
       margin-top: 1rem;
     }
+    #statusBarCombined {
+      display: flex;
+      font-size: 1rem;
+      color: white;
+      margin-top: 0.5rem;
+      justify-content: center;
+      align-items: center;
+      gap: 0.7em;
+      flex-wrap: wrap;
+    }
+    #statusBarCombined span,
+    #statusBarCombined button,
+    #statusBarCombined select {
+      font-family: 'Orbitron', sans-serif;
+    }
+    #statusBarCombined button,
+    #statusBarCombined select {
+      background: none;
+      color: white;
+      border: 1px solid #a020f0;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .visually-hidden {
+      position: absolute !important;
+      height: 1px; width: 1px;
+      overflow: hidden;
+      clip: rect(1px, 1px, 1px, 1px);
+    }
     #overlay {
       position: absolute;
       top: 50%;
@@ -65,25 +95,55 @@
 <body>
   <canvas id="gameCanvas" tabindex="0"></canvas>
   <div id="overlay">PAUSED</div>
+
+  <!-- BUTTON BAR BELOW GAME -->
+  <div id="statusBarCombined">
+    <span id="scoreDisplay">Score: 0</span>
+    <span id="highScoreDisplay">High Score: 0</span>
+    <button id="pauseBtn">⏸️</button>
+    <button id="muteBtn">🔊</button>
+    <label for="speedSelect" class="visually-hidden">Game Speed</label>
+    <select id="speedSelect">
+      <option value="250">Normal</option>
+      <option value="120">Fast</option>
+      <option value="60">Turbo</option>
+    </select>
+    <button id="toggleRadio">Radio OFF</button>
+    <button id="loginBtn">LOG IN</button>
+  </div>
+
+  <!-- LOGIN POPUP -->
   <div id="loginPopup">
     <p>Select WAX Wallet</p>
-    <button onclick="alert('Anchor login')">Anchor</button>
-    <button onclick="alert('MyCloud login')">MyCloud</button>
-    <button onclick="alert('Wombat login')">Wombat</button>
+    <button onclick="alert('Login with Anchor')">Anchor</button>
+    <button onclick="alert('Login with MyCloud')">MyCloud</button>
+    <button onclick="alert('Login with Wombat')">Wombat</button>
   </div>
-  <audio id="radioStream" loop autoplay>
+
+  <audio id="radioStream" loop>
     <source src="http://stream.radiojar.com/2qm1fc5kb" type="audio/mpeg">
   </audio>
+
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     canvas.width = 400;
     canvas.height = 400;
-    const gridSize = 20;
-    const tileCount = canvas.width / gridSize;
+
     let player = { x: 10, y: 19 };
     let invaders = [{ x: 10, y: 2 }];
     let bullets = [];
+    const gridSize = 20;
+    const tileCount = canvas.width / gridSize;
+    let score = 0;
+    let highScore = Number(localStorage.getItem("high_score") || 0);
+
+    // UI Elements
+    const scoreDisplay = document.getElementById("scoreDisplay");
+    const highScoreDisplay = document.getElementById("highScoreDisplay");
+    const overlay = document.getElementById("overlay");
+    const radio = document.getElementById("radioStream");
+
     let left = false, right = false, shooting = false;
 
     document.addEventListener('keydown', e => {
@@ -104,29 +164,70 @@
       ctx.fillText(emoji, x * gridSize + gridSize / 2, y * gridSize + gridSize / 2);
     }
 
+    function updateHUD() {
+      scoreDisplay.textContent = `Score: ${score}`;
+      highScoreDisplay.textContent = `High Score: ${highScore}`;
+    }
+
     function gameLoop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Move player
       if (left && player.x > 0) player.x--;
       if (right && player.x < tileCount - 1) player.x++;
       if (shooting && bullets.length < 5) bullets.push({ x: player.x, y: player.y - 1 });
 
-      // Move bullets
       bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
 
-      // Draw invaders
-      invaders.forEach(inv => drawEmoji(inv.x, inv.y, "👾"));
+      // Collision
+      bullets.forEach((b, i) => {
+        invaders.forEach((inv, j) => {
+          if (b.x === inv.x && b.y === inv.y) {
+            bullets.splice(i, 1);
+            invaders.splice(j, 1);
+            score += 10;
+            if (score > highScore) {
+              highScore = score;
+              localStorage.setItem("high_score", highScore);
+            }
+          }
+        });
+      });
 
-      // Draw bullets
+      drawEmoji(player.x, player.y, "🚀");
+      invaders.forEach(inv => drawEmoji(inv.x, inv.y, "👾"));
       bullets.forEach(b => drawEmoji(b.x, b.y, "💥"));
 
-      // Draw player
-      drawEmoji(player.x, player.y, "🚀");
-
+      updateHUD();
       requestAnimationFrame(gameLoop);
     }
+
     gameLoop();
+
+    // BUTTON CONTROLS
+    document.getElementById("pauseBtn").onclick = () => {
+      const paused = overlay.style.display === "block";
+      overlay.textContent = paused ? "" : "PAUSED";
+      overlay.style.display = paused ? "none" : "block";
+    };
+
+    document.getElementById("muteBtn").onclick = () => {
+      radio.muted = !radio.muted;
+      document.getElementById("muteBtn").textContent = radio.muted ? "🔇" : "🔊";
+    };
+
+    document.getElementById("toggleRadio").onclick = () => {
+      if (radio.paused) {
+        radio.play();
+        document.getElementById("toggleRadio").textContent = "Radio OFF";
+      } else {
+        radio.pause();
+        document.getElementById("toggleRadio").textContent = "Radio ON";
+      }
+    };
+
+    document.getElementById("loginBtn").onclick = () => {
+      document.getElementById("loginPopup").style.display = "block";
+    };
   </script>
 </body>
 </html>
