@@ -1,184 +1,149 @@
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-canvas.width = 400;
-canvas.height = 400;
-
-const gridSize = 20;
-const tileCount = canvas.width / gridSize;
-
-let score = 0;
-let highScore = Number(localStorage.getItem("high_score") || 0);
-
-const player = { x: 10, y: 19, speedCounter: 0 };
-let bullets = [];
-let invaders = [];
-let bombs = [];
-let invaderDir = 1;
-let invaderSpeed = 40;
-let invaderTick = 0;
-let bulletCooldown = 0;
-let gameOver = false;
-
-const scoreDisplay = document.getElementById("scoreDisplay");
-const highScoreDisplay = document.getElementById("highScoreDisplay");
-const overlay = document.getElementById("overlay");
-const gameOverOverlay = document.getElementById("gameOverOverlay");
-const radio = document.getElementById("radioStream");
-
-const emojiBank = "😀😅😇🤣😂🙃😍🥰😘🤪😜😝🧐🤓😎🤩🥳🥺😢😭😤😡🤬🤯😳🥵🥶😱🤗😥😰🤥🥱😪🤢🤠🤑🤕🤒😷🤧🤮😈👿👹🤡👻😺🎃🤖👾👽☠️😸😻🙀😿👀🎅🐶🐱🐭🐹🐰🦊🐻🐷🐮🐨🐻‍❄️🐼🐸🐵🙈🙉🙊🌍🌈⛄️🍏🍎🍐🍊🍒🍔🍟🧁🍩🍪⚽️🏀🏈⚾️🥎🏐❤️🧡💛💚💙💜☢️☣️🔞♥️".split('');
-
-function spawnInvaderGrid() {
-  invaders = [];
-  for (let row = 0; row < 10; row++) {
-    const rowEmojis = [];
-    while (rowEmojis.length < 5) {
-      const emoji = emojiBank[Math.floor(Math.random() * emojiBank.length)];
-      if (!rowEmojis.includes(emoji)) rowEmojis.push(emoji);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>emojisinvade – Play & Listen</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: url('bgobe.jpg') center center fixed;
+      background-size: cover;
+      font-family: 'Orbitron', "Segoe UI", sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
     }
-    for (let col = 0; col < 5; col++) {
-      invaders.push({ x: col * 2 + 2, y: row + 1, emoji: rowEmojis[col] });
+    canvas {
+      width: 90vmin;
+      height: 90vmin;
+      background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
+      box-shadow: 0 0 20px #a020f0;
+      margin-top: 1rem;
     }
-  }
-}
-
-spawnInvaderGrid();
-
-let left = false, right = false, shooting = false;
-
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft') left = true;
-  if (e.key === 'ArrowRight') right = true;
-  if (e.key === ' ') shooting = true;
-});
-document.addEventListener('keyup', e => {
-  if (e.key === 'ArrowLeft') left = false;
-  if (e.key === 'ArrowRight') right = false;
-  if (e.key === ' ') shooting = false;
-});
-
-function drawEmoji(x, y, emoji, flicker = false) {
-  ctx.font = `${gridSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150));
-  ctx.fillText(emoji, x * gridSize + gridSize / 2, y * gridSize + gridSize / 2);
-  ctx.globalAlpha = 1;
-}
-
-function updateHUD() {
-  scoreDisplay.textContent = `Score: ${score}`;
-  highScoreDisplay.textContent = `High Score: ${highScore}`;
-}
-
-function gameLoop() {
-  if (gameOver) return;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Rocket move
-  player.speedCounter++;
-  if (player.speedCounter >= 4) {
-    if (left && player.x > 0) player.x--;
-    if (right && player.x < tileCount - 1) player.x++;
-    player.speedCounter = 0;
-  }
-
-  // Fire bullets
-  if (bulletCooldown > 0) bulletCooldown--;
-  if (shooting && bulletCooldown === 0 && bullets.length < 3) {
-    bullets.push({ x: player.x, y: player.y - 1 });
-    bulletCooldown = 15;
-  }
-
-  bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
-
-  // Move invaders
-  invaderTick++;
-  if (invaderTick >= invaderSpeed) {
-    let hitEdge = false;
-    for (let i = 0; i < invaders.length; i++) {
-      invaders[i].x += invaderDir;
-      if (Math.random() < 0.002) {
-        bombs.push({ x: invaders[i].x, y: invaders[i].y + 1 });
-      }
-      if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
+    #statusBarCombined {
+      display: flex;
+      font-size: 1rem;
+      color: white;
+      margin-top: 0.5rem;
+      justify-content: center;
+      align-items: center;
+      gap: 0.7em;
+      flex-wrap: wrap;
     }
-    if (hitEdge) {
-      invaderDir *= -1;
-      for (let i = 0; i < invaders.length; i++) {
-        invaders[i].y += 1;
-      }
+    #statusBarCombined span,
+    #statusBarCombined button,
+    #statusBarCombined select {
+      font-family: 'Orbitron', "Segoe UI", sans-serif;
     }
-    invaderTick = 0;
-  }
-
-  // Move bombs
-  bombs = bombs.map(b => ({ x: b.x, y: b.y + 1 })).filter(b => b.y < tileCount);
-  bombs.forEach(b => {
-    if (b.x === player.x && b.y === player.y) {
-      gameOver = true;
-      gameOverOverlay.style.display = "flex";
+    #statusBarCombined button,
+    #statusBarCombined select {
+      background: none;
+      color: white;
+      border: 1px solid #a020f0;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
     }
-  });
-
-  // Bullet hits
-  bullets.forEach((b, i) => {
-    for (let j = 0; j < invaders.length; j++) {
-      const inv = invaders[j];
-      if (b.x === inv.x && b.y === inv.y) {
-        bullets.splice(i, 1);
-        invaders.splice(j, 1);
-        score += 10;
-        if (score > highScore) {
-          highScore = score;
-          localStorage.setItem("high_score", highScore);
-        }
-        break;
-      }
+    .visually-hidden {
+      position: absolute !important;
+      height: 1px; width: 1px;
+      overflow: hidden;
+      clip: rect(1px, 1px, 1px, 1px);
     }
-  });
-
-  drawEmoji(player.x, player.y, "💩");
-  bullets.forEach(b => drawEmoji(b.x, b.y, "💥"));
-  invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true));
-  bombs.forEach(b => drawEmoji(b.x, b.y, "✨", true));
-
-  if (invaders.length === 0) {
-    spawnInvaderGrid();
-  }
-
-  updateHUD();
-  requestAnimationFrame(gameLoop);
-}
-
-gameLoop();
-
-// UI Buttons
-document.getElementById("pauseBtn").onclick = () => {
-  const paused = overlay.style.display === "block";
-  overlay.textContent = paused ? "" : "PAUSED";
-  overlay.style.display = paused ? "none" : "block";
-};
-
-document.getElementById("muteBtn").onclick = () => {
-  radio.muted = !radio.muted;
-  document.getElementById("muteBtn").textContent = radio.muted ? "🔇" : "🔊";
-};
-
-document.getElementById("toggleRadio").onclick = () => {
-  if (radio.paused) {
-    radio.play();
-    document.getElementById("toggleRadio").textContent = "Radio OFF";
-  } else {
-    radio.pause();
-    document.getElementById("toggleRadio").textContent = "Radio ON";
-  }
-};
-
-document.getElementById("loginBtn").onclick = () => {
-  document.getElementById("loginPopup").style.display = "block";
-};
-
-document.getElementById("closeLoginPopup").onclick = () => {
-  document.getElementById("loginPopup").style.display = "none";
-};
+    #overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      color: #fff;
+      background: rgba(0,0,0,0.7);
+      padding: 2rem 3rem;
+      border-radius: 1rem;
+      display: none;
+      z-index: 5;
+    }
+    #gameOverOverlay {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      font-size: 2rem;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+    }
+    #loginPopup {
+      display: none;
+      position: fixed;
+      top: 30%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.95);
+      border: 1px solid #888;
+      padding: 1rem;
+      border-radius: 10px;
+      z-index: 20;
+      color: white;
+      min-width: 250px;
+      text-align: center;
+    }
+    #loginPopup button {
+      margin: 0.5rem;
+      font-size: 1rem;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      background: #333;
+      color: white;
+      cursor: pointer;
+    }
+    #closeLoginPopup {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      font-size: 20px;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" tabindex="0"></canvas>
+  <div id="overlay">PAUSED</div>
+  <div id="gameOverOverlay">GAME OVER</div>
+  <div id="statusBarCombined">
+    <span id="scoreDisplay">Score: 0</span>
+    <span id="highScoreDisplay">High Score: 0</span>
+    <button id="pauseBtn">⏸️</button>
+    <button id="muteBtn">🔊</button>
+    <label for="speedSelect" class="visually-hidden">Game Speed</label>
+    <select id="speedSelect">
+      <option value="250">Normal</option>
+      <option value="120">Fast</option>
+      <option value="60">Turbo</option>
+    </select>
+    <button id="toggleRadio">Radio OFF</button>
+    <button id="loginBtn">LOG IN</button>
+  </div>
+  <div id="loginPopup">
+    <span id="closeLoginPopup">&times;</span>
+    <p>Select WAX Wallet</p>
+    <button onclick="alert('Login with Anchor')">Anchor</button>
+    <button onclick="alert('Login with MyCloud')">MyCloud</button>
+    <button onclick="alert('Login with Wombat')">Wombat</button>
+  </div>
+  <audio id="radioStream" loop>
+    <source src="http://stream.radiojar.com/2qm1fc5kb" type="audio/mpeg">
+  </audio>
+  <script src="game.js"></script>
+</body>
+</html>
