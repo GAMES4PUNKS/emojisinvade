@@ -1,5 +1,6 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+// Set both canvas HTML attributes and CSS for crisp rendering
 canvas.width = 400;
 canvas.height = 400;
 
@@ -25,6 +26,10 @@ const highScoreDisplay = document.getElementById("highScoreDisplay");
 const overlay = document.getElementById("overlay");
 const radio = document.getElementById("radioStream");
 
+// Track game pause state
+let isPaused = false;
+let reqId = null;
+
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 10; row++) {
@@ -42,16 +47,23 @@ spawnInvaderGrid();
 
 let left = false, right = false, shooting = false;
 
+// Keyboard controls
 document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft') left = true;
-  if (e.key === 'ArrowRight') right = true;
-  if (e.key === ' ') shooting = true;
+  if (e.key === 'ArrowLeft' || e.key === "a") left = true;
+  if (e.key === 'ArrowRight' || e.key === "d") right = true;
+  if (e.key === ' ' || e.key === "z" || e.key === "j") shooting = true;
+  // Pause shortcut
+  if (e.key === "p" || e.key === "P") togglePause();
 });
 document.addEventListener('keyup', e => {
-  if (e.key === 'ArrowLeft') left = false;
-  if (e.key === 'ArrowRight') right = false;
-  if (e.key === ' ') shooting = false;
+  if (e.key === 'ArrowLeft' || e.key === "a") left = false;
+  if (e.key === 'ArrowRight' || e.key === "d") right = false;
+  if (e.key === ' ' || e.key === "z" || e.key === "j") shooting = false;
 });
+
+// Touch controls (optional: add your own arrows/buttons)
+// Example for future:
+// document.getElementById("leftBtn").onclick = () => left = true; ...
 
 function drawEmoji(x, y, emoji, flicker = false) {
   ctx.font = `${gridSize}px Orbitron`;
@@ -67,7 +79,31 @@ function updateHUD() {
   highScoreDisplay.textContent = `High Score: ${highScore}`;
 }
 
+function resetGame() {
+  score = 0;
+  bullets = [];
+  bombs = [];
+  player.x = 10;
+  player.y = 19;
+  player.speedCounter = 0;
+  spawnInvaderGrid();
+  updateHUD();
+}
+
+function gameOver() {
+  overlay.textContent = "GAME OVER";
+  overlay.style.display = "block";
+  score = 0;
+  setTimeout(() => {
+    overlay.style.display = "none";
+    resetGame();
+    isPaused = false;
+    reqId = requestAnimationFrame(gameLoop);
+  }, 1500);
+}
+
 function gameLoop() {
+  if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Player movement (slowed)
@@ -95,15 +131,7 @@ function gameLoop() {
   for (let i = 0; i < bombs.length; i++) {
     const b = bombs[i];
     if (b.x === player.x && b.y === player.y) {
-      overlay.textContent = "GAME OVER";
-      overlay.style.display = "block";
-      score = 0;
-      bombs = [];
-      bullets = [];
-      setTimeout(() => {
-        spawnInvaderGrid();
-        overlay.style.display = "none";
-      }, 1500);
+      gameOver();
       return;
     }
   }
@@ -133,20 +161,20 @@ function gameLoop() {
   }
 
   // Bullet collision with invaders
-  bullets.forEach((b, bi) => {
+  bullets = bullets.filter(b => {
     for (let j = 0; j < invaders.length; j++) {
       const inv = invaders[j];
       if (b.x === inv.x && b.y === inv.y) {
-        bullets.splice(bi, 1);
         invaders.splice(j, 1);
         score += 10;
         if (score > highScore) {
           highScore = score;
           localStorage.setItem("high_score", highScore);
         }
-        break;
+        return false; // remove this bullet
       }
     }
+    return true;
   });
 
   // Draw player, bullets, bombs, invaders
@@ -161,17 +189,27 @@ function gameLoop() {
   }
 
   updateHUD();
-  requestAnimationFrame(gameLoop);
+  reqId = requestAnimationFrame(gameLoop);
 }
 
-gameLoop();
+// Pause/resume logic
+function togglePause() {
+  if (isPaused) {
+    // Resume
+    isPaused = false;
+    overlay.style.display = "none";
+    reqId = requestAnimationFrame(gameLoop);
+  } else {
+    // Pause
+    isPaused = true;
+    overlay.textContent = "PAUSED";
+    overlay.style.display = "block";
+    if (reqId) cancelAnimationFrame(reqId);
+  }
+}
 
 // UI button logic
-document.getElementById("pauseBtn").onclick = () => {
-  const paused = overlay.style.display === "block";
-  overlay.textContent = paused ? "" : "PAUSED";
-  overlay.style.display = paused ? "none" : "block";
-};
+document.getElementById("pauseBtn").onclick = togglePause;
 
 document.getElementById("muteBtn").onclick = () => {
   radio.muted = !radio.muted;
@@ -195,3 +233,17 @@ document.getElementById("loginBtn").onclick = () => {
 document.getElementById("closeLoginPopup").onclick = () => {
   document.getElementById("loginPopup").style.display = "none";
 };
+
+// Close login popup on Escape key
+window.addEventListener('keydown', function(e) {
+  if (e.key === "Escape") {
+    const popup = document.getElementById("loginPopup");
+    if (popup && popup.style.display === "block") {
+      popup.style.display = "none";
+    }
+  }
+});
+
+// Start game
+updateHUD();
+gameLoop();
