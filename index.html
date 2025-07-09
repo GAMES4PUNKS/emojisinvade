@@ -79,6 +79,8 @@
       border-radius: 10px;
       z-index: 20;
       color: white;
+      min-width: 250px;
+      text-align: center;
     }
     #loginPopup button {
       margin: 0.5rem;
@@ -90,13 +92,20 @@
       color: white;
       cursor: pointer;
     }
+    #closeLoginPopup {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      font-size: 20px;
+      color: white;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas" tabindex="0"></canvas>
   <div id="overlay">PAUSED</div>
 
-  <!-- BUTTON BAR BELOW GAME -->
   <div id="statusBarCombined">
     <span id="scoreDisplay">Score: 0</span>
     <span id="highScoreDisplay">High Score: 0</span>
@@ -112,8 +121,8 @@
     <button id="loginBtn">LOG IN</button>
   </div>
 
-  <!-- LOGIN POPUP -->
   <div id="loginPopup">
+    <span id="closeLoginPopup">&times;</span>
     <p>Select WAX Wallet</p>
     <button onclick="alert('Login with Anchor')">Anchor</button>
     <button onclick="alert('Login with MyCloud')">MyCloud</button>
@@ -130,19 +139,29 @@
     canvas.width = 400;
     canvas.height = 400;
 
-    let player = { x: 10, y: 19 };
-    let invaders = [{ x: 10, y: 2 }];
-    let bullets = [];
     const gridSize = 20;
     const tileCount = canvas.width / gridSize;
+
     let score = 0;
     let highScore = Number(localStorage.getItem("high_score") || 0);
 
-    // UI Elements
+    const player = { x: 10, y: 19, speedCounter: 0 };
+    let bullets = [];
+    let invaders = [];
+    let invaderDir = 1;
+    let invaderSpeed = 40;
+    let invaderTick = 0;
+
     const scoreDisplay = document.getElementById("scoreDisplay");
     const highScoreDisplay = document.getElementById("highScoreDisplay");
     const overlay = document.getElementById("overlay");
     const radio = document.getElementById("radioStream");
+
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 5; col++) {
+        invaders.push({ x: col * 2 + 2, y: row + 1 });
+      }
+    }
 
     let left = false, right = false, shooting = false;
 
@@ -172,13 +191,36 @@
     function gameLoop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (left && player.x > 0) player.x--;
-      if (right && player.x < tileCount - 1) player.x++;
-      if (shooting && bullets.length < 5) bullets.push({ x: player.x, y: player.y - 1 });
+      player.speedCounter++;
+      if (player.speedCounter >= 4) {
+        if (left && player.x > 0) player.x--;
+        if (right && player.x < tileCount - 1) player.x++;
+        player.speedCounter = 0;
+      }
+
+      if (shooting && bullets.length < 3) {
+        bullets.push({ x: player.x, y: player.y - 1 });
+        shooting = false;
+      }
 
       bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
 
-      // Collision
+      invaderTick++;
+      if (invaderTick >= invaderSpeed) {
+        let hitEdge = false;
+        for (let i = 0; i < invaders.length; i++) {
+          invaders[i].x += invaderDir;
+          if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
+        }
+        if (hitEdge) {
+          invaderDir *= -1;
+          for (let i = 0; i < invaders.length; i++) {
+            invaders[i].y += 1;
+          }
+        }
+        invaderTick = 0;
+      }
+
       bullets.forEach((b, i) => {
         invaders.forEach((inv, j) => {
           if (b.x === inv.x && b.y === inv.y) {
@@ -194,8 +236,8 @@
       });
 
       drawEmoji(player.x, player.y, "🚀");
-      invaders.forEach(inv => drawEmoji(inv.x, inv.y, "👾"));
       bullets.forEach(b => drawEmoji(b.x, b.y, "💥"));
+      invaders.forEach(inv => drawEmoji(inv.x, inv.y, "👾"));
 
       updateHUD();
       requestAnimationFrame(gameLoop);
@@ -203,7 +245,6 @@
 
     gameLoop();
 
-    // BUTTON CONTROLS
     document.getElementById("pauseBtn").onclick = () => {
       const paused = overlay.style.display === "block";
       overlay.textContent = paused ? "" : "PAUSED";
@@ -227,6 +268,10 @@
 
     document.getElementById("loginBtn").onclick = () => {
       document.getElementById("loginPopup").style.display = "block";
+    };
+
+    document.getElementById("closeLoginPopup").onclick = () => {
+      document.getElementById("loginPopup").style.display = "none";
     };
   </script>
 </body>
