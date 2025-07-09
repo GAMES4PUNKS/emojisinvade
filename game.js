@@ -52,7 +52,7 @@ const radio = document.getElementById("radioStream");
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 
-// --- BUNKERS AS CELL GRIDS ---
+// --- BUNKERS AS CELL GRIDS (3x3 cells) ---
 function getBunkerY() {
   const previousY = tileCount - 5;
   const bottomY = tileCount - 2;
@@ -65,7 +65,7 @@ function getBunkerXs() {
     Math.round(tileCount * 5 / 6)
   ];
 }
-const BUNKER_W = 6, BUNKER_H = 3;
+const BUNKER_W = 3, BUNKER_H = 3;
 function makeCells() {
   return Array.from({length: BUNKER_H}, () => Array(BUNKER_W).fill(true));
 }
@@ -73,9 +73,9 @@ function buildBunkers() {
   const y = getBunkerY();
   const xs = getBunkerXs();
   return [
-    { x: xs[0] - 3, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() },
-    { x: xs[1] - 3, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() },
-    { x: xs[2] - 3, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() }
+    { x: xs[0] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() },
+    { x: xs[1] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() },
+    { x: xs[2] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() }
   ];
 }
 let bunkers = buildBunkers();
@@ -93,6 +93,12 @@ function drawBunker(bunker) {
       }
     }
   }
+}
+
+function allBunkerCellsMissing() {
+  return bunkers.every(bunker =>
+    bunker.cells.every(row => row.every(cell => !cell))
+  );
 }
 
 // --- DRAW GAME OBJECTS ---
@@ -181,14 +187,12 @@ function togglePause() {
   }
 }
 
-// --- BONUS EMOJI ACROSS TOP LINE ---
+// --- BONUS EMOJI ACROSS TOP LINE (SLOWER) ---
 let bonusEmoji = null;
-// Structure: {emoji, x, y, dir, speed, bankIndex}
 let bonusTimer = 0;
 
 function maybeSpawnBonusEmoji() {
   if (bonusEmoji !== null) return;
-  // Randomly decide whether to spawn (avg once every 5-10 seconds)
   if (Math.random() < 1/240) {
     const fromLeft = Math.random() < 0.5;
     const idx = Math.floor(Math.random() * emojiBank.length);
@@ -197,8 +201,8 @@ function maybeSpawnBonusEmoji() {
       x: fromLeft ? 0 : tileCount - 1,
       y: 0,
       dir: fromLeft ? 1 : -1,
-      speed: 0.5 + Math.random(), // random speed (cells per frame)
-      progress: 0, // sub-tile progress for smooth movement
+      speed: (0.5 + Math.random()) / 3, // 200% slower
+      progress: 0,
       bankIndex: idx
     };
   }
@@ -219,7 +223,7 @@ function updateBonusEmoji() {
 function drawBonusEmoji() {
   if (!bonusEmoji) return;
   let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress;
-  drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize + 8); // slightly bigger
+  drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize + 8);
 }
 
 function handleBulletBonusCollision() {
@@ -330,6 +334,7 @@ function gameLoop() {
 
   // Bomb collision with bunkers and player
   let bombsAfter = [];
+  let bunkerCellHit = false;
   for (let b of bombs) {
     let hit = false;
     for (const bunker of bunkers) {
@@ -341,6 +346,7 @@ function gameLoop() {
           ) {
             bunker.cells[row][col] = false;
             hit = true;
+            bunkerCellHit = true;
           }
         }
       }
@@ -353,6 +359,12 @@ function gameLoop() {
     bombsAfter.push(b);
   }
   bombs = bombsAfter;
+
+  // If any bunker cell was hit by a falling emoji, game over
+  if (bunkerCellHit) {
+    gameOver();
+    return;
+  }
 
   // Bullet collision with bunkers (breaks piece)
   let bulletsAfter = [];
@@ -395,6 +407,16 @@ function gameLoop() {
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true));
 
   if (invaders.length === 0) spawnInvaderGrid();
+
+  // --- Game Over if all bunkers gone and bomb reaches shooter line ---
+  if (allBunkerCellsMissing()) {
+    for (let b of bombs) {
+      if (b.y >= player.y) {
+        gameOver();
+        return;
+      }
+    }
+  }
 
   updateHUD();
   reqId = requestAnimationFrame(gameLoop);
