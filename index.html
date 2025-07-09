@@ -6,16 +6,8 @@
   <title>emojisinvade – Play & Listen</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
   <style>
-    html, body {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      height: 100%;
-    }
-    *, *:before, *:after {
-      box-sizing: inherit;
-    }
     body {
+      margin: 0;
       background: url('bgobe.jpg') center center fixed;
       background-size: cover;
       font-family: 'Orbitron', sans-serif;
@@ -25,51 +17,12 @@
       align-items: center;
       min-height: 100vh;
     }
-    #game-container {
-      position: relative;
-      width: 90vmin;
-      max-width: 90vw;
-      margin-top: 1rem;
-    }
     canvas {
-      width: 100%;
-      height: 100%;
+      width: 90vmin;
+      height: 90vmin;
       background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
       box-shadow: 0 0 20px #a020f0;
-      display: block;
-      outline: none;
-    }
-    #overlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 2rem;
-      color: #fff;
-      background: rgba(0,0,0,0.7);
-      padding: 2rem 3rem;
-      border-radius: 1rem;
-      display: none;
-      z-index: 5;
-      pointer-events: none;
-      min-width: 220px;
-      text-align: center;
-    }
-    #gameOverOverlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.9);
-      color: #fff;
-      display: none;
-      justify-content: center;
-      align-items: center;
-      font-size: 2rem;
-      z-index: 10;
-      text-align: center;
-      flex-direction: column;
+      margin-top: 1rem;
     }
     #statusBarCombined {
       display: flex;
@@ -95,14 +48,38 @@
       border-radius: 6px;
       cursor: pointer;
     }
-    #statusBarCombined button[aria-pressed="true"] {
-      background: #a020f0;
-    }
     .visually-hidden {
       position: absolute !important;
       height: 1px; width: 1px;
       overflow: hidden;
       clip: rect(1px, 1px, 1px, 1px);
+    }
+    #overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      color: #fff;
+      background: rgba(0,0,0,0.7);
+      padding: 2rem 3rem;
+      border-radius: 1rem;
+      display: none;
+      z-index: 5;
+    }
+    #gameOverOverlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      color: #fff;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      font-size: 2rem;
+      z-index: 10;
     }
     #loginPopup {
       display: none;
@@ -140,18 +117,16 @@
   </style>
 </head>
 <body>
-  <div id="game-container">
-    <canvas id="gameCanvas" tabindex="0" width="400" height="400" aria-label="game canvas"></canvas>
-    <div id="overlay">PAUSED</div>
-    <div id="gameOverOverlay">GAME OVER</div>
-  </div>
-  <div id="statusBarCombined" aria-live="polite">
+  <canvas id="gameCanvas" tabindex="0"></canvas>
+  <div id="overlay">PAUSED</div>
+  <div id="gameOverOverlay">GAME OVER</div>
+  <div id="statusBarCombined">
     <span id="scoreDisplay">Score: 0</span>
     <span id="highScoreDisplay">High Score: 0</span>
-    <button id="pauseBtn" aria-pressed="false" title="Pause/Resume">⏸️</button>
-    <button id="muteBtn" aria-pressed="false" title="Mute/Unmute SFX">🔊</button>
+    <button id="pauseBtn">⏸️</button>
+    <button id="muteBtn">🔊</button>
     <label for="speedSelect" class="visually-hidden">Game Speed</label>
-    <select id="speedSelect" title="Game Speed">
+    <select id="speedSelect">
       <option value="250">Normal</option>
       <option value="120">Fast</option>
       <option value="60">Turbo</option>
@@ -159,8 +134,8 @@
     <button id="toggleRadio">Radio OFF</button>
     <button id="loginBtn">LOG IN</button>
   </div>
-  <div id="loginPopup" aria-modal="true" role="dialog">
-    <span id="closeLoginPopup" tabindex="0" aria-label="Close login popup">&times;</span>
+  <div id="loginPopup">
+    <span id="closeLoginPopup">&times;</span>
     <p>Select WAX Wallet</p>
     <button onclick="alert('Login with Anchor')">Anchor</button>
     <button onclick="alert('Login with MyCloud')">MyCloud</button>
@@ -169,17 +144,6 @@
   <audio id="radioStream" loop>
     <source src="http://stream.radiojar.com/2qm1fc5kb" type="audio/mpeg">
   </audio>
-  <script>
-    // Popup close logic
-    const loginPopup = document.getElementById('loginPopup');
-    const loginBtn = document.getElementById('loginBtn');
-    const closeLoginPopup = document.getElementById('closeLoginPopup');
-    loginBtn.onclick = () => loginPopup.style.display = 'block';
-    closeLoginPopup.onclick = () => loginPopup.style.display = 'none';
-    window.addEventListener('keydown', e => {
-      if (e.key === "Escape") loginPopup.style.display = "none";
-    });
-  </script>
-  <script src="game.js"></script>
+<script src="game.js"></script>
 </body>
 </html>
