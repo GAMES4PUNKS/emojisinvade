@@ -10,7 +10,7 @@
       margin: 0;
       background: url('bgobe.jpg') center center fixed;
       background-size: cover;
-      font-family: 'Orbitron', 'Segoe UI', sans-serif;
+      font-family: 'Orbitron', 'Segoe UI', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
       color: white;
       display: flex;
       flex-direction: column;
@@ -23,6 +23,8 @@
       background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
       box-shadow: 0 0 20px #a020f0;
       margin-top: 1rem;
+      /* Add emoji fonts for canvas fallback */
+      font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Orbitron', sans-serif;
     }
     #statusBarCombined {
       display: flex;
@@ -33,11 +35,12 @@
       align-items: center;
       gap: 0.7em;
       flex-wrap: wrap;
+      font-family: 'Orbitron', 'Segoe UI', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
     }
     #statusBarCombined span,
     #statusBarCombined button,
     #statusBarCombined select {
-      font-family: 'Orbitron', 'Segoe UI', sans-serif;
+      font-family: 'Orbitron', 'Segoe UI', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
     }
     #statusBarCombined button,
     #statusBarCombined select {
@@ -66,7 +69,7 @@
       border-radius: 1rem;
       display: none;
       z-index: 10;
-      font-family: 'Orbitron', 'Segoe UI', sans-serif;
+      font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
     }
     #loginPopup {
       display: none;
