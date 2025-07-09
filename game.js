@@ -332,7 +332,7 @@ function gameLoop() {
     return true;
   });
 
-  // Bomb collision with bunkers and player
+  // --- NEW: Bomb collision with bunkers and player (corrected logic) ---
   let bombsAfter = [];
   let bunkerCellHit = false;
   for (let b of bombs) {
@@ -344,14 +344,16 @@ function gameLoop() {
             bunker.cells[row][col] &&
             b.x === bunker.x + col && b.y === bunker.y + row
           ) {
+            // Only trigger game over if this cell was intact
             bunker.cells[row][col] = false;
-            hit = true;
             bunkerCellHit = true;
+            hit = true;
           }
         }
       }
     }
     if (hit) continue;
+    // Only trigger game over if bomb lands on exact player position
     if (b.x === player.x && b.y === player.y) {
       gameOver();
       return;
@@ -360,7 +362,7 @@ function gameLoop() {
   }
   bombs = bombsAfter;
 
-  // If any bunker cell was hit by a falling emoji, game over
+  // Only game over if a newly hit bunker cell (not on destroyed cell)
   if (bunkerCellHit) {
     gameOver();
     return;
@@ -408,10 +410,10 @@ function gameLoop() {
 
   if (invaders.length === 0) spawnInvaderGrid();
 
-  // --- Game Over if all bunkers gone and bomb reaches shooter line ---
+  // --- NEW: Only game over if all bunkers gone and bomb hits player exactly ---
   if (allBunkerCellsMissing()) {
     for (let b of bombs) {
-      if (b.y >= player.y) {
+      if (b.x === player.x && b.y === player.y) {
         gameOver();
         return;
       }
