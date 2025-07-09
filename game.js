@@ -1,4 +1,4 @@
-// Safe cross-platform emoji bank for your game
+// emoji invaders game - cross-platform emoji safe set
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
   "😍","🥰","😘","😗","😙","😚","😐","😑","😶","🙄","😏","😣","😥","😮",
@@ -27,7 +27,7 @@ const tileCount = canvas.width / gridSize;
 let score = 0;
 let highScore = Number(localStorage.getItem("high_score") || 0);
 
-const player = { x: 10, y: 19, speedCounter: 0 };
+const player = { x: 10, y: tileCount - 1, speedCounter: 0 };
 let bullets = [];
 let bombs = [];
 let invaders = [];
@@ -42,21 +42,22 @@ const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 const radio = document.getElementById("radioStream");
 
-// BUNKERS/BARRIERS using BASE.png
+// Load barrier (BASE.png)
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 
-// Bunker definitions: 3 barriers, fixed X, fixed Y above player line, with health
+// Bunkers/barriers: smaller and higher, so player sits visually over them
 const bunkers = [
-  { x: 4, y: tileCount - 3, health: 3, maxHealth: 3 },
-  { x: Math.floor(tileCount / 2), y: tileCount - 3, health: 3, maxHealth: 3 },
-  { x: tileCount - 5, y: tileCount - 3, health: 3, maxHealth: 3 }
+  { x: 4, y: tileCount - 5, health: 3, maxHealth: 3 },
+  { x: Math.floor(tileCount / 2), y: tileCount - 5, health: 3, maxHealth: 3 },
+  { x: tileCount - 5, y: tileCount - 5, health: 3, maxHealth: 3 }
 ];
 
+// Responsive bunker draw (smaller barriers, positioned higher)
 function drawBunker(bunker) {
   if (bunker.health <= 0) return;
-  // Responsive: 1/5 of canvas width (as in the screenshot)
-  const size = Math.floor(canvas.width / 5);
+  // Smaller: about 1/7 of canvas width
+  const size = Math.floor(canvas.width / 7);
   ctx.save();
   ctx.globalAlpha = Math.max(0.5, bunker.health / bunker.maxHealth); // fade if damaged
   ctx.drawImage(
@@ -70,8 +71,8 @@ function drawBunker(bunker) {
 }
 
 // Responsive emoji draw for player and game objects
-function drawEmoji(x, y, emoji, flicker = false) {
-  ctx.font = `${gridSize}px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif`;
+function drawEmoji(x, y, emoji, flicker = false, customSize = null) {
+  ctx.font = (customSize ? customSize : gridSize) + "px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif";
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150));
@@ -125,7 +126,7 @@ function resetGame() {
   bullets = [];
   bombs = [];
   player.x = 10;
-  player.y = 19;
+  player.y = tileCount - 1;
   player.speedCounter = 0;
   spawnInvaderGrid();
   resetBunkers();
@@ -162,7 +163,7 @@ function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw bunkers first (so they're under bullets/bombs/player)
+  // Draw bunkers first
   bunkers.forEach(drawBunker);
 
   // Player movement (slowed)
@@ -242,7 +243,7 @@ function gameLoop() {
   }
   bombs = bombsAfter;
 
-  // Draw player as small emoji
+  // Draw player as small emoji, above the bunkers visually
   drawEmoji(player.x, player.y, "💩");
 
   // Draw bullets/bombs/invaders
