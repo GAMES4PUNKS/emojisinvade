@@ -53,6 +53,9 @@ const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 const radio = document.getElementById("radioStream");
 
+// ---- GAME SOUND MUTE LOGIC ----
+let gameSoundsMuted = false;
+
 // ---- SOUND EFFECTS ----
 const ufoSound = new Audio('ufo.mp3');
 ufoSound.preload = 'auto';
@@ -76,6 +79,7 @@ for (let fs of fireSounds) {
   fs.loop = false;
 }
 function playRandomFireSound() {
+  if (gameSoundsMuted) return;
   const idx = Math.floor(Math.random() * fireSounds.length);
   try {
     fireSounds[idx].currentTime = 0;
@@ -83,6 +87,14 @@ function playRandomFireSound() {
   } catch (e) {}
 }
 
+function updateGameSoundMute() {
+  const v = gameSoundsMuted ? 0 : 1;
+  ufoSound.volume = v;
+  ufoHitSound.volume = v;
+  fireSounds.forEach(fs => fs.volume = v);
+}
+
+// Focus helper to prevent button spacebar bug
 function focusGameCanvas() {
   canvas.focus();
 }
@@ -298,8 +310,10 @@ function maybeSpawnBonusEmoji() {
       bankIndex: idx
     };
     try {
-      ufoSound.currentTime = 0;
-      ufoSound.play();
+      if (!gameSoundsMuted) {
+        ufoSound.currentTime = 0;
+        ufoSound.play();
+      }
     } catch (e) {}
   }
 }
@@ -327,7 +341,6 @@ function handleBulletBonusCollision() {
   if (!bonusEmoji) return;
   let hit = false;
   bullets = bullets.filter(b => {
-    // Tolerant collision on both axes for UFO
     if (
       Math.abs(b.x - bonusEmoji.x) < 0.5 &&
       Math.abs(b.y - bonusEmoji.y) < 0.5
@@ -348,7 +361,7 @@ function handleBulletBonusCollision() {
   if (hit) {
     bonusSpeedupHits++;
     try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
-    try { ufoHitSound.currentTime = 0; ufoHitSound.play(); } catch (e) {}
+    try { if (!gameSoundsMuted) { ufoHitSound.currentTime = 0; ufoHitSound.play(); } } catch (e) {}
     setTimeout(() => {
       bonusEmoji = null;
     }, 300);
@@ -549,8 +562,9 @@ document.getElementById("pauseBtn").onclick = () => {
   focusGameCanvas();
 };
 document.getElementById("muteBtn").onclick = () => {
-  radio.muted = !radio.muted;
-  document.getElementById("muteBtn").textContent = radio.muted ? "🔇" : "🔊";
+  gameSoundsMuted = !gameSoundsMuted;
+  updateGameSoundMute();
+  document.getElementById("muteBtn").textContent = gameSoundsMuted ? "🔇" : "🔊";
   focusGameCanvas();
 };
 document.getElementById("toggleRadio").onclick = () => {
