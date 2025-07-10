@@ -95,11 +95,12 @@ function drawBunker(bunker) {
   }
 }
 
-function drawEmoji(x, y, emoji, flicker = false, customSize = null) {
+// Add a phase parameter for independent flicker
+function drawEmoji(x, y, emoji, flicker = false, customSize = null, phase = 0) {
   ctx.font = (customSize ? customSize : gridSize) + "px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif";
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150));
+  if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150 + phase));
   ctx.fillText(emoji, x * gridSize + gridSize / 2, y * gridSize + gridSize / 2);
   ctx.globalAlpha = 1;
 }
@@ -116,6 +117,7 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
+// Assign a random phase to each invader for independent flicker
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 10; row++) {
@@ -125,7 +127,12 @@ function spawnInvaderGrid() {
       if (!rowEmojis.includes(emoji)) rowEmojis.push(emoji);
     }
     for (let col = 0; col < 5; col++) {
-      invaders.push({ x: col * 2 + 2, y: row + 1, emoji: rowEmojis[col] });
+      invaders.push({
+        x: col * 2 + 2,
+        y: row + 1,
+        emoji: rowEmojis[col],
+        flickerPhase: Math.random() * Math.PI * 2 // random phase
+      });
     }
   }
 }
@@ -157,6 +164,7 @@ function resetGame() {
   player.y = tileCount - 1;
   player.speedCounter = 0;
   playerLives = 3;
+  invaderSpeed = 40; // Reset speed on new game
   spawnInvaderGrid();
   resetBunkers();
   updateHUD();
@@ -321,8 +329,36 @@ function gameLoop() {
     bulletCooldown = 15;
   }
 
+  // --- Bullet-bunker collision before moving bullets ---
+  let bulletsAfter = [];
+  for (let b of bullets) {
+    let hit = false;
+    for (const bunker of bunkers) {
+      for (let row = 0; row < bunker.height; row++) {
+        for (let col = 0; col < bunker.width; col++) {
+          if (
+            bunker.cells[row][col] &&
+            b.x === bunker.x + col && b.y === bunker.y + row
+          ) {
+            bunker.cells[row][col] = false;
+            hit = true;
+          }
+        }
+      }
+    }
+    if (!hit) bulletsAfter.push(b);
+  }
+  bullets = bulletsAfter;
+
+  // Now move bullets up
   bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
-  bombs = bombs.map(b => ({ x: b.x, y: b.y + 1, emoji: b.emoji })).filter(b => b.y < tileCount);
+
+  // Bombs: 200% slower, always "✨"
+  if (!window.bombFrame) window.bombFrame = 0;
+  window.bombFrame = (window.bombFrame + 1) % 2;
+  if (window.bombFrame === 0) {
+    bombs = bombs.map(b => ({ x: b.x, y: b.y + 1 })).filter(b => b.y < tileCount);
+  }
 
   invaderTick++;
   if (invaderTick >= invaderSpeed) {
@@ -330,9 +366,9 @@ function gameLoop() {
     for (let i = 0; i < invaders.length; i++) {
       invaders[i].x += invaderDir;
       if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
+      // Bombs always "✨"
       if (Math.random() < 0.004) {
-        const bombEmoji = emojiBank[Math.floor(Math.random() * emojiBank.length)];
-        bombs.push({ x: invaders[i].x, y: invaders[i].y, emoji: bombEmoji });
+        bombs.push({ x: invaders[i].x, y: invaders[i].y, emoji: "✨" });
       }
     }
     if (hitEdge) {
@@ -412,26 +448,6 @@ function gameLoop() {
   }
   bombs = bombsAfter;
 
-  let bulletsAfter = [];
-  for (let b of bullets) {
-    let hit = false;
-    for (const bunker of bunkers) {
-      for (let row = 0; row < bunker.height; row++) {
-        for (let col = 0; col < bunker.width; col++) {
-          if (
-            bunker.cells[row][col] &&
-            b.x === bunker.x + col && b.y === bunker.y + row
-          ) {
-            bunker.cells[row][col] = false;
-            hit = true;
-          }
-        }
-      }
-    }
-    if (!hit) bulletsAfter.push(b);
-  }
-  bullets = bulletsAfter;
-
   maybeSpawnBonusEmoji();
   updateBonusEmoji();
   drawBonusEmoji();
@@ -440,10 +456,16 @@ function gameLoop() {
 
   drawEmoji(player.x, player.y, "💩");
   bullets.forEach(b => drawEmoji(b.x, b.y, "💥"));
-  bombs.forEach(b => drawEmoji(b.x, b.y, b.emoji, true));
-  invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true));
+  bombs.forEach(b => drawEmoji(b.x, b.y, "✨", true));
+  // Draw each invader with its independent flicker phase
+  invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
 
-  if (invaders.length === 0) spawnInvaderGrid();
+  // Speed up invaders after each wave cleared
+  if (invaders.length === 0) {
+    invaderSpeed = Math.max(1, invaderSpeed - 0.5);
+    spawnInvaderGrid();
+  }
+
   updateHUD();
   reqId = requestAnimationFrame(gameLoop);
 }
