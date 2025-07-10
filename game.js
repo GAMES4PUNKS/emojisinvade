@@ -80,10 +80,14 @@ for (let fs of fireSounds) {
 function playRandomFireSound() {
   const idx = Math.floor(Math.random() * fireSounds.length);
   try {
-    // If already playing, restart
     fireSounds[idx].currentTime = 0;
     fireSounds[idx].play();
   } catch (e) {}
+}
+
+// Focus helper to prevent button spacebar bug
+function focusGameCanvas() {
+  canvas.focus();
 }
 
 // Load barrier (BASE.png)
@@ -563,10 +567,14 @@ updateHUD();
 gameLoop();
 
 // --- UI Buttons etc ---
-document.getElementById("pauseBtn").onclick = togglePause;
+document.getElementById("pauseBtn").onclick = () => {
+  togglePause();
+  focusGameCanvas();
+};
 document.getElementById("muteBtn").onclick = () => {
   radio.muted = !radio.muted;
   document.getElementById("muteBtn").textContent = radio.muted ? "🔇" : "🔊";
+  focusGameCanvas();
 };
 document.getElementById("toggleRadio").onclick = () => {
   if (radio.paused) {
@@ -576,18 +584,26 @@ document.getElementById("toggleRadio").onclick = () => {
     radio.pause();
     document.getElementById("toggleRadio").textContent = "Radio ON";
   }
+  focusGameCanvas();
 };
 document.getElementById("loginBtn").onclick = () => {
   document.getElementById("loginPopup").style.display = "block";
+  // Don't focus canvas here so user can interact with popup
 };
 document.getElementById("closeLoginPopup").onclick = () => {
   document.getElementById("loginPopup").style.display = "none";
+  focusGameCanvas();
+};
+document.getElementById("speedSelect").onchange = (e) => {
+  invaderSpeed = Number(e.target.value);
+  focusGameCanvas();
 };
 window.addEventListener('keydown', function(e) {
   if (e.key === "Escape") {
     const popup = document.getElementById("loginPopup");
     if (popup && popup.style.display === "block") {
       popup.style.display = "none";
+      focusGameCanvas();
     }
   }
   // Manual restart: Enter key or Space key
@@ -595,9 +611,6 @@ window.addEventListener('keydown', function(e) {
     manualRestart();
   }
 });
-document.getElementById("speedSelect").onchange = (e) => {
-  invaderSpeed = Number(e.target.value);
-};
 // Manual restart: Mouse click/tap/touch on canvas
 canvas.addEventListener('mousedown', manualRestart);
 canvas.addEventListener('touchstart', manualRestart);
