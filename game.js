@@ -65,6 +65,27 @@ ufoHitSound.preload = 'auto';
 ufoHitSound.volume = 1;
 ufoHitSound.loop = false;
 
+// FIRE SOUNDS: fire.mp3, fire2.mp3, fire3.mp3, fire4.mp3 (rotated randomly)
+const fireSounds = [
+  new Audio('fire.mp3'),
+  new Audio('fire2.mp3'),
+  new Audio('fire3.mp3'),
+  new Audio('fire4.mp3')
+];
+for (let fs of fireSounds) {
+  fs.preload = 'auto';
+  fs.volume = 1;
+  fs.loop = false;
+}
+function playRandomFireSound() {
+  // Pick a random fire sound (not currently playing)
+  const idx = Math.floor(Math.random() * fireSounds.length);
+  try {
+    fireSounds[idx].currentTime = 0;
+    fireSounds[idx].play();
+  } catch (e) {}
+}
+
 // Load barrier (BASE.png)
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
@@ -368,6 +389,7 @@ function gameLoop() {
   // --- Only fire one bullet per keypress, never autofire, and only if no bullet is present on screen
   if (shooting && bullets.length === 0) {
     bullets.push({ x: player.x, y: player.y - 1, vy: 0 });
+    playRandomFireSound();
     shooting = false; // Prevent autofire until key is released and pressed again
   }
 
