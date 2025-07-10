@@ -42,7 +42,7 @@ let invaderDir = 1;
 let invaderSpeed = 40;
 let invaderTick = 0;
 let bulletCooldown = 0;
-let bombDropSpeed = 0.33; // Initial drop speed for bombs
+let bombDropSpeed = 0.33; // Initial drop speed for bombs (slowed down 200%)
 
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
@@ -164,7 +164,7 @@ function resetGame() {
   player.speedCounter = 0;
   playerLives = 3;
   invaderSpeed = 40; // Reset speed on new game
-  bombDropSpeed = 0.33; // Reset bomb speed on new game
+  bombDropSpeed = 0.33; // Reset bomb speed on new game (slow, 200% slower)
   spawnInvaderGrid();
   resetBunkers();
   updateHUD();
@@ -360,9 +360,9 @@ function gameLoop() {
   // Now move bullets up
   bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
 
-  // --- Smooth bomb dropping: bombs have a fractional "vy" and drop at bombDropSpeed ---
+  // --- Smooth bomb dropping: bombs have a fractional "vy" and drop at bombDropSpeed (slowed by 200%)
   bombs.forEach(b => {
-    b.vy = (b.vy || 0) + bombDropSpeed;
+    b.vy = (b.vy || 0) + 0.33; // Slowed down by 200%
     if (b.vy >= 1) {
       b.y += Math.floor(b.vy);
       b.vy = b.vy % 1;
