@@ -34,6 +34,8 @@ let score = 0;
 let highScore = Number(localStorage.getItem("high_score") || 0);
 
 const player = { x: 10, y: tileCount - 1, speedCounter: 0 };
+let playerLives = 3;
+
 let bullets = [];
 let bombs = [];
 let invaders = [];
@@ -114,6 +116,14 @@ function drawEmoji(x, y, emoji, flicker = false, customSize = null) {
 function updateHUD() {
   scoreDisplay.textContent = `Score: ${score}`;
   highScoreDisplay.textContent = `High Score: ${highScore}`;
+  // Display lives
+  let livesDisplay = document.getElementById("livesDisplay");
+  if (!livesDisplay) {
+    livesDisplay = document.createElement("span");
+    livesDisplay.id = "livesDisplay";
+    highScoreDisplay.parentNode.insertBefore(livesDisplay, highScoreDisplay.nextSibling);
+  }
+  livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
 function spawnInvaderGrid() {
@@ -156,19 +166,41 @@ function resetGame() {
   player.x = 10;
   player.y = tileCount - 1;
   player.speedCounter = 0;
+  playerLives = 3;
   spawnInvaderGrid();
   resetBunkers();
   updateHUD();
 }
 
-function gameOver() {
-  gameOverOverlay.style.display = 'flex';
-  setTimeout(() => {
-    gameOverOverlay.style.display = 'none';
-    resetGame();
-    isPaused = false;
-    reqId = requestAnimationFrame(gameLoop);
-  }, 1500);
+// --- GAME OVER and LIFE LOGIC ---
+function loseLifeOrGameOver() {
+  playerLives--;
+  updateHUD();
+  if (playerLives <= 0) {
+    gameOverOverlay.style.display = 'flex';
+    setTimeout(() => {
+      gameOverOverlay.style.display = 'none';
+      resetGame();
+      isPaused = false;
+      reqId = requestAnimationFrame(gameLoop);
+    }, 1500);
+  } else {
+    player.x = 10;
+    player.y = tileCount - 1;
+    player.speedCounter = 0;
+    bombs = bombs.filter(b => b.y < player.y);
+    bullets = [];
+    setTimeout(() => {
+      reqId = requestAnimationFrame(gameLoop);
+    }, 500);
+    isPaused = true;
+    overlay.textContent = "💥 Ouch! 💥";
+    overlay.style.display = "block";
+    setTimeout(() => {
+      overlay.style.display = "none";
+      isPaused = false;
+    }, 400);
+  }
 }
 
 let isPaused = false;
@@ -187,21 +219,36 @@ function togglePause() {
   }
 }
 
-// --- BONUS EMOJI ACROSS TOP LINE (SLOWER) ---
+// --- BONUS EMOJI ACROSS TOP LINE (SLOWER, Adaptive Speed) ---
 let bonusEmoji = null;
 let bonusTimer = 0;
+let bonusBaseSpeed = 0.15;        // Default slow UFO speed
+let bonusSpeedupHits = 0;
+let firstBonusSpawned = false;
 
 function maybeSpawnBonusEmoji() {
   if (bonusEmoji !== null) return;
   if (Math.random() < 1/240) {
     const fromLeft = Math.random() < 0.5;
     const idx = Math.floor(Math.random() * emojiBank.length);
+
+    // 200% slower for first UFO, then use normal base speed and speedups
+    let speed;
+    if (!firstBonusSpawned) {
+      speed = 0.05; // 200% slower than 0.15
+      firstBonusSpawned = true;
+    } else {
+      speed = 0.15; // normal slow base
+      if (bonusSpeedupHits > 5) {
+        speed = 0.15 * Math.pow(1.1, bonusSpeedupHits - 5);
+      }
+    }
     bonusEmoji = {
       emoji: emojiBank[idx],
       x: fromLeft ? 0 : tileCount - 1,
       y: 0,
       dir: fromLeft ? 1 : -1,
-      speed: (0.5 + Math.random()) / 3, // 200% slower
+      speed: speed,
       progress: 0,
       bankIndex: idx
     };
@@ -248,6 +295,7 @@ function handleBulletBonusCollision() {
     return true;
   });
   if (hit) {
+    bonusSpeedupHits++;
     setTimeout(() => {
       bonusEmoji = null;
     }, 300);
@@ -315,6 +363,20 @@ function gameLoop() {
     invaderTick = 0;
   }
 
+  // --- GAME OVER if any invader lands on the same line as player ---
+  for (let i = 0; i < invaders.length; i++) {
+    if (invaders[i].y === player.y) {
+      gameOverOverlay.style.display = 'flex';
+      setTimeout(() => {
+        gameOverOverlay.style.display = 'none';
+        resetGame();
+        isPaused = false;
+        reqId = requestAnimationFrame(gameLoop);
+      }, 1500);
+      return;
+    }
+  }
+
   // Bullet <-> Invader collision
   bullets = bullets.filter((b, i) => {
     for (let j = 0; j < invaders.length; j++) {
@@ -332,9 +394,8 @@ function gameLoop() {
     return true;
   });
 
-  // --- NEW: Bomb collision with bunkers and player (corrected logic) ---
+  // Bomb collision with bunkers and player (destroy cell, lose life if player hit)
   let bombsAfter = [];
-  let bunkerCellHit = false;
   for (let b of bombs) {
     let hit = false;
     for (const bunker of bunkers) {
@@ -344,37 +405,30 @@ function gameLoop() {
             bunker.cells[row][col] &&
             b.x === bunker.x + col && b.y === bunker.y + row
           ) {
-            // Only trigger game over if this cell was intact
             bunker.cells[row][col] = false;
-            bunkerCellHit = true;
             hit = true;
           }
         }
       }
     }
     if (hit) continue;
-    // Only trigger game over if bomb lands on exact player position
+    // Lose life if bomb lands on player
     if (b.x === player.x && b.y === player.y) {
-      gameOver();
+      loseLifeOrGameOver();
       return;
     }
     bombsAfter.push(b);
   }
   bombs = bombsAfter;
 
-  // Only game over if a newly hit bunker cell (not on destroyed cell)
-  if (bunkerCellHit) {
-    gameOver();
-    return;
-  }
-
-  // Bullet collision with bunkers (breaks piece)
+  // Bullet collision with bunkers (destroy cell, not game over)
   let bulletsAfter = [];
   for (let b of bullets) {
     let hit = false;
     for (const bunker of bunkers) {
       for (let row = 0; row < bunker.height; row++) {
         for (let col = 0; col < bunker.width; col++) {
+          // When bullet hits bunker cell, remove cell
           if (
             bunker.cells[row][col] &&
             b.x === bunker.x + col && b.y === bunker.y + row
@@ -409,16 +463,6 @@ function gameLoop() {
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true));
 
   if (invaders.length === 0) spawnInvaderGrid();
-
-  // --- NEW: Only game over if all bunkers gone and bomb hits player exactly ---
-  if (allBunkerCellsMissing()) {
-    for (let b of bombs) {
-      if (b.x === player.x && b.y === player.y) {
-        gameOver();
-        return;
-      }
-    }
-  }
 
   updateHUD();
   reqId = requestAnimationFrame(gameLoop);
