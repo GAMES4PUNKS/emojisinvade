@@ -42,6 +42,7 @@ let invaderDir = 1;
 let invaderSpeed = 40;
 let invaderTick = 0;
 let bulletCooldown = 0;
+let bombDropSpeed = 0.33; // Initial drop speed for bombs
 
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
@@ -95,7 +96,6 @@ function drawBunker(bunker) {
   }
 }
 
-// Add a phase parameter for independent flicker
 function drawEmoji(x, y, emoji, flicker = false, customSize = null, phase = 0) {
   ctx.font = (customSize ? customSize : gridSize) + "px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif";
   ctx.textAlign = 'center';
@@ -117,7 +117,6 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-// Assign a random phase to each invader for independent flicker
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 10; row++) {
@@ -165,22 +164,24 @@ function resetGame() {
   player.speedCounter = 0;
   playerLives = 3;
   invaderSpeed = 40; // Reset speed on new game
+  bombDropSpeed = 0.33; // Reset bomb speed on new game
   spawnInvaderGrid();
   resetBunkers();
   updateHUD();
 }
+
+let isPaused = false;
+let reqId = null;
+let gameOverState = false; // Track if game over
 
 function loseLifeOrGameOver() {
   playerLives--;
   updateHUD();
   if (playerLives <= 0) {
     gameOverOverlay.style.display = 'flex';
-    setTimeout(() => {
-      gameOverOverlay.style.display = 'none';
-      resetGame();
-      isPaused = false;
-      reqId = requestAnimationFrame(gameLoop);
-    }, 1500);
+    isPaused = true;
+    gameOverState = true;
+    // Don't auto-restart
   } else {
     player.x = 10;
     player.y = tileCount - 1;
@@ -200,15 +201,21 @@ function loseLifeOrGameOver() {
   }
 }
 
-let isPaused = false;
-let reqId = null;
+function manualRestart() {
+  if (!gameOverState) return;
+  gameOverOverlay.style.display = 'none';
+  gameOverState = false;
+  isPaused = false;
+  resetGame();
+  reqId = requestAnimationFrame(gameLoop);
+}
 
 function togglePause() {
-  if (isPaused) {
+  if (isPaused && !gameOverState) {
     isPaused = false;
     overlay.style.display = "none";
     reqId = requestAnimationFrame(gameLoop);
-  } else {
+  } else if (!gameOverState) {
     isPaused = true;
     overlay.textContent = "PAUSED";
     overlay.style.display = "block";
@@ -353,12 +360,15 @@ function gameLoop() {
   // Now move bullets up
   bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
 
-  // Bombs: 200% slower, always "✨"
-  if (!window.bombFrame) window.bombFrame = 0;
-  window.bombFrame = (window.bombFrame + 1) % 2;
-  if (window.bombFrame === 0) {
-    bombs = bombs.map(b => ({ x: b.x, y: b.y + 1 })).filter(b => b.y < tileCount);
-  }
+  // --- Smooth bomb dropping: bombs have a fractional "vy" and drop at bombDropSpeed ---
+  bombs.forEach(b => {
+    b.vy = (b.vy || 0) + bombDropSpeed;
+    if (b.vy >= 1) {
+      b.y += Math.floor(b.vy);
+      b.vy = b.vy % 1;
+    }
+  });
+  bombs = bombs.filter(b => b.y < tileCount);
 
   invaderTick++;
   if (invaderTick >= invaderSpeed) {
@@ -368,7 +378,7 @@ function gameLoop() {
       if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
       // Bombs always "✨"
       if (Math.random() < 0.004) {
-        bombs.push({ x: invaders[i].x, y: invaders[i].y, emoji: "✨" });
+        bombs.push({ x: invaders[i].x, y: invaders[i].y, emoji: "✨", vy: 0 });
       }
     }
     if (hitEdge) {
@@ -397,12 +407,9 @@ function gameLoop() {
       bunkerRows.has(invaders[i].y)
     ) {
       gameOverOverlay.style.display = 'flex';
-      setTimeout(() => {
-        gameOverOverlay.style.display = 'none';
-        resetGame();
-        isPaused = false;
-        reqId = requestAnimationFrame(gameLoop);
-      }, 1500);
+      isPaused = true;
+      gameOverState = true;
+      // Don't auto-restart
       return;
     }
   }
@@ -431,7 +438,7 @@ function gameLoop() {
         for (let col = 0; col < bunker.width; col++) {
           if (
             bunker.cells[row][col] &&
-            b.x === bunker.x + col && b.y === bunker.y + row
+            b.x === bunker.x + col && Math.round(b.y) === bunker.y + row
           ) {
             bunker.cells[row][col] = false;
             hit = true;
@@ -440,7 +447,7 @@ function gameLoop() {
       }
     }
     if (hit) continue;
-    if (b.x === player.x && b.y === player.y) {
+    if (b.x === player.x && Math.round(b.y) === player.y) {
       loseLifeOrGameOver();
       return;
     }
@@ -456,13 +463,14 @@ function gameLoop() {
 
   drawEmoji(player.x, player.y, "💩");
   bullets.forEach(b => drawEmoji(b.x, b.y, "💥"));
-  bombs.forEach(b => drawEmoji(b.x, b.y, "✨", true));
+  bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), "✨", true));
   // Draw each invader with its independent flicker phase
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
 
-  // Speed up invaders after each wave cleared
+  // Speed up invaders and bombs after each wave cleared
   if (invaders.length === 0) {
     invaderSpeed = Math.max(1, invaderSpeed - 0.5);
+    bombDropSpeed = Math.min(2, bombDropSpeed + 0.2); // Increase bomb drop rate by 0.2 each level, cap at 2
     spawnInvaderGrid();
   }
 
@@ -501,7 +509,14 @@ window.addEventListener('keydown', function(e) {
       popup.style.display = "none";
     }
   }
+  // Manual restart: Enter key or Space key
+  if (gameOverState && (e.key === "Enter" || e.key === " ")) {
+    manualRestart();
+  }
 });
 document.getElementById("speedSelect").onchange = (e) => {
   invaderSpeed = Number(e.target.value);
 };
+// Manual restart: Mouse click/tap/touch on canvas
+canvas.addEventListener('mousedown', manualRestart);
+canvas.addEventListener('touchstart', manualRestart);
