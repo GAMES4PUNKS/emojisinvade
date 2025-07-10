@@ -42,8 +42,11 @@ let invaderDir = 1;
 let invaderSpeed = 40;
 let invaderTick = 0;
 let bulletCooldown = 0;
-let bombDropSpeed = 0.33; // Initial bomb drop speed (slowed by 200% vs normal 1)
+
+// SLOW: Bombs fall 200% slower (3x slower), UFOs move 200% slower (3x slower)
+let bombDropSpeed = 0.33; // bombs: 0.33 per frame (original 1)
 let bulletTravelSpeed = 0.33; // Bullets travel 3x slower (200% reduction in speed)
+let ufoSlowFactor = 0.33; // UFOs: all speeds multiplied by 0.33
 
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
@@ -174,6 +177,7 @@ function resetGame() {
   invaderSpeed = 40; // Reset speed on new game
   bombDropSpeed = 0.33; // Reset bomb speed on new game (slow, 200% slower)
   bulletTravelSpeed = 0.33; // Reset bullet speed on new game (slow, 200% slower)
+  ufoSlowFactor = 0.33;
   spawnInvaderGrid();
   resetBunkers();
   updateHUD();
@@ -245,12 +249,12 @@ function maybeSpawnBonusEmoji() {
     const idx = Math.floor(Math.random() * emojiBank.length);
     let speed;
     if (!firstBonusSpawned) {
-      speed = 0.05;
+      speed = 0.05 * ufoSlowFactor;
       firstBonusSpawned = true;
     } else {
-      speed = 0.15;
+      speed = 0.15 * ufoSlowFactor;
       if (bonusSpeedupHits > 5) {
-        speed = 0.15 * Math.pow(1.1, bonusSpeedupHits - 5);
+        speed = 0.15 * Math.pow(1.1, bonusSpeedupHits - 5) * ufoSlowFactor;
       }
     }
     bonusEmoji = {
