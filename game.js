@@ -363,9 +363,22 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // --- GAME OVER if any invader lands on the same line as player ---
+  // --- GAME OVER if any invader lands on the same line as player or any bunker cell still alive ---
+  let bunkerRows = new Set();
+  for (const bunker of bunkers) {
+    for (let row = 0; row < bunker.height; row++) {
+      for (let col = 0; col < bunker.width; col++) {
+        if (bunker.cells[row][col]) {
+          bunkerRows.add(bunker.y + row);
+        }
+      }
+    }
+  }
   for (let i = 0; i < invaders.length; i++) {
-    if (invaders[i].y === player.y) {
+    if (
+      invaders[i].y === player.y ||
+      bunkerRows.has(invaders[i].y)
+    ) {
       gameOverOverlay.style.display = 'flex';
       setTimeout(() => {
         gameOverOverlay.style.display = 'none';
