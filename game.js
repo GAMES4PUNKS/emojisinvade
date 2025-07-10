@@ -54,6 +54,17 @@ const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 const radio = document.getElementById("radioStream");
 
+// ---- SOUND EFFECTS ----
+const ufoSound = new Audio('ufo.mp3');
+ufoSound.preload = 'auto';
+ufoSound.volume = 1;
+ufoSound.loop = false;
+
+const ufoHitSound = new Audio('ufo2.mp3');
+ufoHitSound.preload = 'auto';
+ufoHitSound.volume = 1;
+ufoHitSound.loop = false;
+
 // Load barrier (BASE.png)
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
@@ -266,6 +277,11 @@ function maybeSpawnBonusEmoji() {
       progress: 0,
       bankIndex: idx
     };
+    // ---- PLAY UFO SOUND ON SPAWN ----
+    try {
+      ufoSound.currentTime = 0;
+      ufoSound.play();
+    } catch (e) {}
   }
 }
 
@@ -277,6 +293,8 @@ function updateBonusEmoji() {
     bonusEmoji.progress = 0;
   }
   if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) {
+    // Stop UFO sound when UFO leaves screen
+    try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
     bonusEmoji = null;
   }
 }
@@ -311,6 +329,9 @@ function handleBulletBonusCollision() {
   });
   if (hit) {
     bonusSpeedupHits++;
+    // ---- PLAY UFO HIT SOUND, STOP UFO SOUND ----
+    try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
+    try { ufoHitSound.currentTime = 0; ufoHitSound.play(); } catch (e) {}
     setTimeout(() => {
       bonusEmoji = null;
     }, 300);
@@ -431,6 +452,8 @@ function gameLoop() {
       isPaused = true;
       gameOverState = true;
       // Don't auto-restart
+      // ---- STOP UFO SOUND ON GAME OVER ----
+      try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
       return;
     }
   }
@@ -470,6 +493,8 @@ function gameLoop() {
     if (hit) continue;
     if (b.x === player.x && Math.round(b.y) === player.y) {
       loseLifeOrGameOver();
+      // ---- STOP UFO SOUND ON PLAYER DEATH ----
+      try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
       return;
     }
     bombsAfter.push(b);
