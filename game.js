@@ -78,9 +78,9 @@ for (let fs of fireSounds) {
   fs.loop = false;
 }
 function playRandomFireSound() {
-  // Pick a random fire sound (not currently playing)
   const idx = Math.floor(Math.random() * fireSounds.length);
   try {
+    // If already playing, restart
     fireSounds[idx].currentTime = 0;
     fireSounds[idx].play();
   } catch (e) {}
@@ -480,18 +480,30 @@ function gameLoop() {
     }
   }
 
-  bullets = bullets.filter((b, i) => {
-    for (let j = 0; j < invaders.length; j++) {
-      const inv = invaders[j];
-      if (Math.round(b.x) === inv.x && Math.round(b.y) === inv.y) {
-        invaders.splice(j, 1);
-        score += 10;
-        if (score > highScore) {
-          highScore = score;
-          localStorage.setItem("high_score", highScore);
-        }
-        return false;
+  // ---- FIXED BULLET/INVADER COLLISION (no shoot-through bug) ----
+  let bulletIndicesToRemove = new Set();
+  let invaderIndicesToRemove = new Set();
+  bullets.forEach((b, bi) => {
+    invaders.forEach((inv, ji) => {
+      if (Math.round(b.x) === Math.round(inv.x) && Math.round(b.y) === Math.round(inv.y)) {
+        bulletIndicesToRemove.add(bi);
+        invaderIndicesToRemove.add(ji);
       }
+    });
+  });
+  // Remove bullets that collided
+  bullets = bullets.filter((b, i) => !bulletIndicesToRemove.has(i));
+  // Remove invaders that were hit and update score
+  let removed = 0;
+  invaders = invaders.filter((inv, i) => {
+    if (invaderIndicesToRemove.has(i)) {
+      score += 10;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("high_score", highScore);
+      }
+      removed++;
+      return false;
     }
     return true;
   });
