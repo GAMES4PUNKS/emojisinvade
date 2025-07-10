@@ -43,10 +43,9 @@ let invaderSpeed = 40;
 let invaderTick = 0;
 let bulletCooldown = 0;
 
-// SLOW: Bombs fall 200% slower (3x slower), UFOs move 200% slower (3x slower)
-let bombDropSpeed = 0.33; // bombs: 0.33 per frame (original 1)
-let bulletTravelSpeed = 0.33; // Bullets travel 3x slower (200% reduction in speed)
-let ufoSlowFactor = 0.33; // UFOs: all speeds multiplied by 0.33
+let bombDropSpeed = 0.33;
+let bulletTravelSpeed = 0.33;
+let ufoSlowFactor = 0.33;
 
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
@@ -65,7 +64,6 @@ ufoHitSound.preload = 'auto';
 ufoHitSound.volume = 1;
 ufoHitSound.loop = false;
 
-// FIRE SOUNDS: fire.mp3, fire2.mp3, fire3.mp3, fire4.mp3 (rotated randomly)
 const fireSounds = [
   new Audio('fire.mp3'),
   new Audio('fire2.mp3'),
@@ -85,12 +83,10 @@ function playRandomFireSound() {
   } catch (e) {}
 }
 
-// Focus helper to prevent button spacebar bug
 function focusGameCanvas() {
   canvas.focus();
 }
 
-// Load barrier (BASE.png)
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 
@@ -170,7 +166,7 @@ function spawnInvaderGrid() {
         x: col * 2 + 2,
         y: row + 1,
         emoji: rowEmojis[col],
-        flickerPhase: Math.random() * Math.PI * 2 // random phase
+        flickerPhase: Math.random() * Math.PI * 2
       });
     }
   }
@@ -178,7 +174,7 @@ function spawnInvaderGrid() {
 spawnInvaderGrid();
 
 let left = false, right = false, shooting = false;
-let firePressed = false; // Only fire when key is pressed down, not held
+let firePressed = false;
 
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') left = true;
@@ -210,9 +206,9 @@ function resetGame() {
   player.y = tileCount - 1;
   player.speedCounter = 0;
   playerLives = 3;
-  invaderSpeed = 40; // Reset speed on new game
-  bombDropSpeed = 0.33; // Reset bomb speed on new game (slow, 200% slower)
-  bulletTravelSpeed = 0.33; // Reset bullet speed on new game (slow, 200% slower)
+  invaderSpeed = 40;
+  bombDropSpeed = 0.33;
+  bulletTravelSpeed = 0.33;
   ufoSlowFactor = 0.33;
   spawnInvaderGrid();
   resetBunkers();
@@ -221,7 +217,7 @@ function resetGame() {
 
 let isPaused = false;
 let reqId = null;
-let gameOverState = false; // Track if game over
+let gameOverState = false;
 
 function loseLifeOrGameOver() {
   playerLives--;
@@ -230,7 +226,6 @@ function loseLifeOrGameOver() {
     gameOverOverlay.style.display = 'flex';
     isPaused = true;
     gameOverState = true;
-    // Don't auto-restart
   } else {
     player.x = 10;
     player.y = tileCount - 1;
@@ -302,7 +297,6 @@ function maybeSpawnBonusEmoji() {
       progress: 0,
       bankIndex: idx
     };
-    // ---- PLAY UFO SOUND ON SPAWN ----
     try {
       ufoSound.currentTime = 0;
       ufoSound.play();
@@ -318,7 +312,6 @@ function updateBonusEmoji() {
     bonusEmoji.progress = 0;
   }
   if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) {
-    // Stop UFO sound when UFO leaves screen
     try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
     bonusEmoji = null;
   }
@@ -327,7 +320,6 @@ function updateBonusEmoji() {
 function drawBonusEmoji() {
   if (!bonusEmoji) return;
   let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress;
-  // UFOs are drawn same size as invaders (gridSize)
   drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize);
 }
 
@@ -335,9 +327,10 @@ function handleBulletBonusCollision() {
   if (!bonusEmoji) return;
   let hit = false;
   bullets = bullets.filter(b => {
+    // Tolerant collision on both axes for UFO
     if (
-      Math.round(b.x) === Math.round(bonusEmoji.x) &&
-      b.y === bonusEmoji.y
+      Math.abs(b.x - bonusEmoji.x) < 0.5 &&
+      Math.abs(b.y - bonusEmoji.y) < 0.5
     ) {
       let pts = emojiBonusScores[bonusEmoji.emoji] || 1000;
       score += pts;
@@ -354,7 +347,6 @@ function handleBulletBonusCollision() {
   });
   if (hit) {
     bonusSpeedupHits++;
-    // ---- PLAY UFO HIT SOUND, STOP UFO SOUND ----
     try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
     try { ufoHitSound.currentTime = 0; ufoHitSound.play(); } catch (e) {}
     setTimeout(() => {
@@ -390,14 +382,12 @@ function gameLoop() {
     player.speedCounter = 0;
   }
 
-  // --- Only fire one bullet per keypress, never autofire, and only if no bullet is present on screen
   if (shooting && bullets.length === 0) {
     bullets.push({ x: player.x, y: player.y - 1, vy: 0 });
     playRandomFireSound();
-    shooting = false; // Prevent autofire until key is released and pressed again
+    shooting = false;
   }
 
-  // --- Bullet-bunker collision before moving bullets ---
   let bulletsAfter = [];
   for (let b of bullets) {
     let hit = false;
@@ -418,9 +408,8 @@ function gameLoop() {
   }
   bullets = bulletsAfter;
 
-  // --- Move bullets up at slow speed (200% slower, i.e. 1 cell every 3 frames) ---
   bullets.forEach(b => {
-    b.vy = (b.vy || 0) + bulletTravelSpeed; // 0.33 per frame
+    b.vy = (b.vy || 0) + bulletTravelSpeed;
     if (b.vy >= 1) {
       b.y -= Math.floor(b.vy);
       b.vy = b.vy % 1;
@@ -428,9 +417,8 @@ function gameLoop() {
   });
   bullets = bullets.filter(b => b.y >= 0);
 
-  // --- Smooth bomb dropping: bombs have a fractional "vy" and drop at bombDropSpeed (slowed by 200%)
   bombs.forEach(b => {
-    b.vy = (b.vy || 0) + bombDropSpeed; // 0.33 is 3x slower than 1 (200% slower)
+    b.vy = (b.vy || 0) + bombDropSpeed;
     if (b.vy >= 1) {
       b.y += Math.floor(b.vy);
       b.vy = b.vy % 1;
@@ -444,7 +432,6 @@ function gameLoop() {
     for (let i = 0; i < invaders.length; i++) {
       invaders[i].x += invaderDir;
       if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
-      // Bombs always "✨"
       if (Math.random() < 0.004) {
         bombs.push({ x: invaders[i].x, y: invaders[i].y, emoji: "✨", vy: 0 });
       }
@@ -458,7 +445,6 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // --- GAME OVER if any invader lands on the same line as player or any bunker cell still alive ---
   let bunkerRows = new Set();
   for (const bunker of bunkers) {
     for (let row = 0; row < bunker.height; row++) {
@@ -477,14 +463,11 @@ function gameLoop() {
       gameOverOverlay.style.display = 'flex';
       isPaused = true;
       gameOverState = true;
-      // Don't auto-restart
-      // ---- STOP UFO SOUND ON GAME OVER ----
       try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
       return;
     }
   }
 
-  // ---- FIXED BULLET/INVADER COLLISION (no shoot-through bug) ----
   let bulletIndicesToRemove = new Set();
   let invaderIndicesToRemove = new Set();
   bullets.forEach((b, bi) => {
@@ -495,9 +478,7 @@ function gameLoop() {
       }
     });
   });
-  // Remove bullets that collided
   bullets = bullets.filter((b, i) => !bulletIndicesToRemove.has(i));
-  // Remove invaders that were hit and update score
   let removed = 0;
   invaders = invaders.filter((inv, i) => {
     if (invaderIndicesToRemove.has(i)) {
@@ -531,7 +512,6 @@ function gameLoop() {
     if (hit) continue;
     if (b.x === player.x && Math.round(b.y) === player.y) {
       loseLifeOrGameOver();
-      // ---- STOP UFO SOUND ON PLAYER DEATH ----
       try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
       return;
     }
@@ -548,14 +528,12 @@ function gameLoop() {
   drawEmoji(player.x, player.y, "💩");
   bullets.forEach(b => drawEmoji(b.x, Math.round(b.y), "💥"));
   bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), "✨", true));
-  // Draw each invader with its independent flicker phase
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
 
-  // Speed up invaders and bombs after each wave cleared
   if (invaders.length === 0) {
     invaderSpeed = Math.max(1, invaderSpeed - 0.5);
-    bombDropSpeed = Math.min(2, bombDropSpeed + 0.2); // Increase bomb drop rate by 0.2 each level, cap at 2
-    bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2); // Optional: let bullets get faster each level
+    bombDropSpeed = Math.min(2, bombDropSpeed + 0.2);
+    bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
     spawnInvaderGrid();
   }
 
@@ -566,7 +544,6 @@ function gameLoop() {
 updateHUD();
 gameLoop();
 
-// --- UI Buttons etc ---
 document.getElementById("pauseBtn").onclick = () => {
   togglePause();
   focusGameCanvas();
@@ -588,7 +565,6 @@ document.getElementById("toggleRadio").onclick = () => {
 };
 document.getElementById("loginBtn").onclick = () => {
   document.getElementById("loginPopup").style.display = "block";
-  // Don't focus canvas here so user can interact with popup
 };
 document.getElementById("closeLoginPopup").onclick = () => {
   document.getElementById("loginPopup").style.display = "none";
@@ -606,11 +582,9 @@ window.addEventListener('keydown', function(e) {
       focusGameCanvas();
     }
   }
-  // Manual restart: Enter key or Space key
   if (gameOverState && (e.key === "Enter" || e.key === " ")) {
     manualRestart();
   }
 });
-// Manual restart: Mouse click/tap/touch on canvas
 canvas.addEventListener('mousedown', manualRestart);
 canvas.addEventListener('touchstart', manualRestart);
