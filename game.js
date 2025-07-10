@@ -42,7 +42,7 @@ let invaderDir = 1;
 let invaderSpeed = 40;
 let invaderTick = 0;
 let bulletCooldown = 0;
-let bombDropSpeed = 0.33; // Initial drop speed for bombs (slowed down 200%)
+let bombDropSpeed = 0.33; // Initial bomb drop speed (slowed by 200% vs normal 1)
 
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
@@ -138,17 +138,24 @@ function spawnInvaderGrid() {
 spawnInvaderGrid();
 
 let left = false, right = false, shooting = false;
+let firePressed = false; // Only fire when key is pressed down, not held
 
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') left = true;
   if (e.key === 'ArrowRight' || e.key === 'd') right = true;
-  if (e.key === ' ' || e.key === 'z' || e.key === 'j') shooting = true;
+  if ((e.key === ' ' || e.key === 'z' || e.key === 'j') && !firePressed) {
+    shooting = true;
+    firePressed = true;
+  }
   if (e.key.toLowerCase() === 'p') togglePause();
 });
 document.addEventListener('keyup', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') left = false;
   if (e.key === 'ArrowRight' || e.key === 'd') right = false;
-  if (e.key === ' ' || e.key === 'z' || e.key === 'j') shooting = false;
+  if (e.key === ' ' || e.key === 'z' || e.key === 'j') {
+    shooting = false;
+    firePressed = false;
+  }
 });
 
 function resetBunkers() {
@@ -223,7 +230,7 @@ function togglePause() {
   }
 }
 
-// --- BONUS EMOJI ACROSS TOP LINE (SLOWER, Adaptive Speed) ---
+// --- BONUS EMOJI ACROSS TOP LINE (UFO) ---
 let bonusEmoji = null;
 let bonusTimer = 0;
 let bonusSpeedupHits = 0;
@@ -271,7 +278,8 @@ function updateBonusEmoji() {
 function drawBonusEmoji() {
   if (!bonusEmoji) return;
   let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress;
-  drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize + 8);
+  // --- UFOs are drawn same size as invaders (gridSize, not larger) ---
+  drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize);
 }
 
 function handleBulletBonusCollision() {
@@ -330,10 +338,10 @@ function gameLoop() {
     player.speedCounter = 0;
   }
 
-  if (bulletCooldown > 0) bulletCooldown--;
-  if (shooting && bulletCooldown === 0 && bullets.length < 3) {
+  // --- Only fire one bullet per keypress, never autofire, and only if no bullet is present on screen
+  if (shooting && bullets.length === 0) {
     bullets.push({ x: player.x, y: player.y - 1 });
-    bulletCooldown = 15;
+    shooting = false; // Prevent autofire until key is released and pressed again
   }
 
   // --- Bullet-bunker collision before moving bullets ---
@@ -362,7 +370,7 @@ function gameLoop() {
 
   // --- Smooth bomb dropping: bombs have a fractional "vy" and drop at bombDropSpeed (slowed by 200%)
   bombs.forEach(b => {
-    b.vy = (b.vy || 0) + 0.33; // Slowed down by 200%
+    b.vy = (b.vy || 0) + 0.33; // 0.33 is 3x slower than 1 (200% slower)
     if (b.vy >= 1) {
       b.y += Math.floor(b.vy);
       b.vy = b.vy % 1;
