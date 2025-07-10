@@ -43,6 +43,7 @@ let invaderSpeed = 40;
 let invaderTick = 0;
 let bulletCooldown = 0;
 let bombDropSpeed = 0.33; // Initial bomb drop speed (slowed by 200% vs normal 1)
+let bulletTravelSpeed = 0.33; // Bullets travel 3x slower (200% reduction in speed)
 
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
@@ -172,6 +173,7 @@ function resetGame() {
   playerLives = 3;
   invaderSpeed = 40; // Reset speed on new game
   bombDropSpeed = 0.33; // Reset bomb speed on new game (slow, 200% slower)
+  bulletTravelSpeed = 0.33; // Reset bullet speed on new game (slow, 200% slower)
   spawnInvaderGrid();
   resetBunkers();
   updateHUD();
@@ -278,7 +280,7 @@ function updateBonusEmoji() {
 function drawBonusEmoji() {
   if (!bonusEmoji) return;
   let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress;
-  // --- UFOs are drawn same size as invaders (gridSize, not larger) ---
+  // UFOs are drawn same size as invaders (gridSize)
   drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize);
 }
 
@@ -340,7 +342,7 @@ function gameLoop() {
 
   // --- Only fire one bullet per keypress, never autofire, and only if no bullet is present on screen
   if (shooting && bullets.length === 0) {
-    bullets.push({ x: player.x, y: player.y - 1 });
+    bullets.push({ x: player.x, y: player.y - 1, vy: 0 });
     shooting = false; // Prevent autofire until key is released and pressed again
   }
 
@@ -353,7 +355,7 @@ function gameLoop() {
         for (let col = 0; col < bunker.width; col++) {
           if (
             bunker.cells[row][col] &&
-            b.x === bunker.x + col && b.y === bunker.y + row
+            Math.round(b.x) === bunker.x + col && Math.round(b.y) === bunker.y + row
           ) {
             bunker.cells[row][col] = false;
             hit = true;
@@ -365,12 +367,19 @@ function gameLoop() {
   }
   bullets = bulletsAfter;
 
-  // Now move bullets up
-  bullets = bullets.map(b => ({ x: b.x, y: b.y - 1 })).filter(b => b.y >= 0);
+  // --- Move bullets up at slow speed (200% slower, i.e. 1 cell every 3 frames) ---
+  bullets.forEach(b => {
+    b.vy = (b.vy || 0) + bulletTravelSpeed; // 0.33 per frame
+    if (b.vy >= 1) {
+      b.y -= Math.floor(b.vy);
+      b.vy = b.vy % 1;
+    }
+  });
+  bullets = bullets.filter(b => b.y >= 0);
 
   // --- Smooth bomb dropping: bombs have a fractional "vy" and drop at bombDropSpeed (slowed by 200%)
   bombs.forEach(b => {
-    b.vy = (b.vy || 0) + 0.33; // 0.33 is 3x slower than 1 (200% slower)
+    b.vy = (b.vy || 0) + bombDropSpeed; // 0.33 is 3x slower than 1 (200% slower)
     if (b.vy >= 1) {
       b.y += Math.floor(b.vy);
       b.vy = b.vy % 1;
@@ -425,7 +434,7 @@ function gameLoop() {
   bullets = bullets.filter((b, i) => {
     for (let j = 0; j < invaders.length; j++) {
       const inv = invaders[j];
-      if (b.x === inv.x && b.y === inv.y) {
+      if (Math.round(b.x) === inv.x && Math.round(b.y) === inv.y) {
         invaders.splice(j, 1);
         score += 10;
         if (score > highScore) {
@@ -470,7 +479,7 @@ function gameLoop() {
   drawBonusScore();
 
   drawEmoji(player.x, player.y, "💩");
-  bullets.forEach(b => drawEmoji(b.x, b.y, "💥"));
+  bullets.forEach(b => drawEmoji(b.x, Math.round(b.y), "💥"));
   bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), "✨", true));
   // Draw each invader with its independent flicker phase
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
@@ -479,6 +488,7 @@ function gameLoop() {
   if (invaders.length === 0) {
     invaderSpeed = Math.max(1, invaderSpeed - 0.5);
     bombDropSpeed = Math.min(2, bombDropSpeed + 0.2); // Increase bomb drop rate by 0.2 each level, cap at 2
+    bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2); // Optional: let bullets get faster each level
     spawnInvaderGrid();
   }
 
