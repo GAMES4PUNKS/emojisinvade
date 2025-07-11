@@ -1,4 +1,4 @@
-// Emoji Invaders Game – Touch/PC Ready (no style change)
+// Emoji Invaders Game
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -58,40 +58,26 @@ let gameSoundsMuted = false;
 
 // ---- SOUND EFFECTS ----
 const ufoSound = new Audio('ufo.mp3');
+ufoSound.preload = 'auto';
+ufoSound.volume = 1;
+ufoSound.loop = false;
+
 const ufoHitSound = new Audio('ufo2.mp3');
+ufoHitSound.preload = 'auto';
+ufoHitSound.volume = 1;
+ufoHitSound.loop = false;
+
 const fireSounds = [
   new Audio('fire.mp3'),
   new Audio('fire2.mp3'),
   new Audio('fire3.mp3'),
   new Audio('fire4.mp3')
 ];
-const invaderDownSound = new Audio('invaderdown.mp3');
-const ufoMissSounds = [
-  new Audio('ufomiss.mp3'),
-  new Audio('ufomiss2.mp3'),
-  new Audio('ufomiss3.mp3')
-];
-const lifeLost1Sound = new Audio('lifelost.mp3');
-const lifeLost2Sound = new Audio('lifelost2.mp3');
-const gameOverSound1 = new Audio('gameover.mp3');
-const gameOverSound2 = new Audio('gameover2.mp3');
-
-[ufoSound, ufoHitSound, invaderDownSound, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2].forEach(sound => {
-  sound.preload = 'auto';
-  sound.volume = 1;
-  sound.loop = false;
-});
-fireSounds.forEach(fs => {
+for (let fs of fireSounds) {
   fs.preload = 'auto';
   fs.volume = 1;
   fs.loop = false;
-});
-ufoMissSounds.forEach(s => {
-  s.preload = 'auto';
-  s.volume = 1;
-  s.loop = false;
-});
-
+}
 function playRandomFireSound() {
   if (gameSoundsMuted) return;
   const idx = Math.floor(Math.random() * fireSounds.length);
@@ -100,52 +86,12 @@ function playRandomFireSound() {
     fireSounds[idx].play();
   } catch (e) {}
 }
-function playInvaderDownSound() {
-  if (gameSoundsMuted) return;
-  try {
-    invaderDownSound.currentTime = 0;
-    invaderDownSound.play();
-  } catch (e) {}
-}
-function playRandomUfoMissSound() {
-  if (gameSoundsMuted) return;
-  const idx = Math.floor(Math.random() * ufoMissSounds.length);
-  try {
-    ufoMissSounds[idx].currentTime = 0;
-    ufoMissSounds[idx].play();
-  } catch (e) {}
-}
-function playLifeLost1Sound() {
-  if (gameSoundsMuted) return;
-  try {
-    lifeLost1Sound.currentTime = 0;
-    lifeLost1Sound.play();
-  } catch (e) {}
-}
-function playLifeLost2Sound() {
-  if (gameSoundsMuted) return;
-  try {
-    lifeLost2Sound.currentTime = 0;
-    lifeLost2Sound.play();
-  } catch (e) {}
-}
-function playGameOverSounds() {
-  if (gameSoundsMuted) return;
-  try {
-    gameOverSound1.currentTime = 0;
-    gameOverSound1.play();
-  } catch (e) {}
-  try {
-    gameOverSound2.currentTime = 0;
-    gameOverSound2.play();
-  } catch (e) {}
-}
 
 function updateGameSoundMute() {
   const v = gameSoundsMuted ? 0 : 1;
-  [ufoSound, ufoHitSound, invaderDownSound, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2].forEach(sound => sound.volume = v);
+  ufoSound.volume = v;
+  ufoHitSound.volume = v;
   fireSounds.forEach(fs => fs.volume = v);
-  ufoMissSounds.forEach(s => s.volume = v);
 }
 
 // Focus helper to prevent button spacebar bug
@@ -265,78 +211,43 @@ function enablePCControls() {
 
 // --- Touch Controls ---
 function enableTouchControls() {
-  // Create overlay only if not present
-  if (!document.getElementById('touch-controls')) {
-    const container = document.createElement('div');
-    container.id = 'touch-controls';
-    container.style.position = 'fixed';
-    container.style.left = '0';
-    container.style.right = '0';
-    container.style.bottom = '0';
-    container.style.height = '36vh';
-    container.style.display = 'flex';
-    container.style.zIndex = 99;
-    container.style.pointerEvents = 'auto';
+  // Ensure touch controls exist
+  const container = document.getElementById('touch-controls');
+  if (!container) return;
 
-    // Fire button (left)
-    const fireBtn = document.createElement('div');
-    fireBtn.textContent = '🔥 FIRE';
-    fireBtn.style.flex = '0 0 30%';
-    fireBtn.style.background = 'rgba(200,0,0,0.8)';
-    fireBtn.style.color = '#fff';
-    fireBtn.style.display = 'flex';
-    fireBtn.style.justifyContent = 'center';
-    fireBtn.style.alignItems = 'center';
-    fireBtn.style.fontSize = '2em';
-    fireBtn.style.userSelect = 'none';
-    fireBtn.style.borderRadius = '0 1em 1em 0';
-    fireBtn.style.marginRight = '4vw';
-    // Touch event for firing
-    fireBtn.addEventListener('touchstart', e => {
-      e.preventDefault();
-      shooting = true;
-      firePressed = true;
-    });
-    fireBtn.addEventListener('touchend', e => {
-      e.preventDefault();
-      shooting = false;
-      firePressed = false;
-    });
+  // Fire button events
+  const fireBtn = container.querySelector('.touch-btn.fire');
+  fireBtn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    shooting = true;
+    firePressed = true;
+  });
+  fireBtn.addEventListener('touchend', e => {
+    e.preventDefault();
+    shooting = false;
+    firePressed = false;
+  });
 
-    // Move area (right)
-    const moveArea = document.createElement('div');
-    moveArea.style.flex = '1';
-    moveArea.style.background = 'rgba(30,40,200,0.7)';
-    moveArea.style.display = 'flex';
-    moveArea.style.justifyContent = 'center';
-    moveArea.style.alignItems = 'center';
-    moveArea.style.userSelect = 'none';
-    moveArea.style.fontSize = '2em';
-    moveArea.style.borderRadius = '1em 0 0 1em';
-
-    // Add arrows
-    const leftArrow = document.createElement('span');
-    leftArrow.textContent = '←';
-    leftArrow.style.flex = '1';
-    leftArrow.style.textAlign = 'center';
-    leftArrow.style.fontSize = '2em';
-    leftArrow.style.color = '#fff';
-
-    const rightArrow = document.createElement('span');
-    rightArrow.textContent = '→';
-    rightArrow.style.flex = '1';
-    rightArrow.style.textAlign = 'center';
-    rightArrow.style.fontSize = '2em';
-    rightArrow.style.color = '#fff';
-
-    moveArea.append(leftArrow, rightArrow);
-
-    // Touch handlers for movement
-    let moveTouchId = null;
-    moveArea.addEventListener('touchstart', function(e) {
-      if (e.touches.length === 1) {
-        moveTouchId = e.touches[0].identifier;
-        const x = e.touches[0].clientX;
+  // Move area events
+  const moveArea = container.querySelector('.touch-btn.move');
+  let moveTouchId = null;
+  moveArea.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) {
+      moveTouchId = e.touches[0].identifier;
+      const x = e.touches[0].clientX;
+      const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
+      if (x < mid) {
+        left = true; right = false;
+      } else {
+        right = true; left = false;
+      }
+    }
+  });
+  moveArea.addEventListener('touchmove', function(e) {
+    for (let i = 0; i < e.touches.length; i++) {
+      const touch = e.touches[i];
+      if (moveTouchId !== null && touch.identifier === moveTouchId) {
+        const x = touch.clientX;
         const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
         if (x < mid) {
           left = true; right = false;
@@ -344,56 +255,38 @@ function enableTouchControls() {
           right = true; left = false;
         }
       }
-    });
-    moveArea.addEventListener('touchmove', function(e) {
-      for (let i = 0; i < e.touches.length; i++) {
-        const touch = e.touches[i];
-        if (moveTouchId !== null && touch.identifier === moveTouchId) {
-          const x = touch.clientX;
-          const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
-          if (x < mid) {
-            left = true; right = false;
-          } else {
-            right = true; left = false;
-          }
-        }
-      }
-    });
-    moveArea.addEventListener('touchend', function(e) {
-      left = false; right = false; moveTouchId = null;
-    });
-
-    container.appendChild(fireBtn);
-    container.appendChild(moveArea);
-    document.body.appendChild(container);
-  }
+    }
+  });
+  moveArea.addEventListener('touchend', function(e) {
+    left = false; right = false; moveTouchId = null;
+  });
 }
 
 // --- Device/Mode Detection ---
 function isTouchOnly() {
-  return ('ontouchstart' in window || navigator.maxTouchPoints > 0) &&
-    !window.matchMedia('(pointer: fine)').matches;
+  // Detect if touch controls should be enabled (coarse pointer or maxTouchPoints)
+  return (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
 }
 
 function configureControls() {
   if (isTouchOnly()) {
     enableTouchControls();
+    document.getElementById('touch-controls').style.display = 'flex';
+    document.body.style.overflowY = 'auto'; // allow scroll if needed
   } else {
     enablePCControls();
-    if (document.getElementById('touch-controls')) {
-      document.getElementById('touch-controls').remove();
-    }
+    document.getElementById('touch-controls').style.display = 'none';
+    document.body.style.overflowY = 'hidden'; // prevent scroll on desktop
   }
 }
 configureControls();
 window.addEventListener('resize', configureControls);
 window.addEventListener('orientationchange', configureControls);
 
-// --- Rest of game logic unchanged ---
-
 function resetBunkers() {
   bunkers = buildBunkers();
 }
+
 function resetGame() {
   score = 0;
   bullets = [];
@@ -415,20 +308,14 @@ let isPaused = false;
 let reqId = null;
 let gameOverState = false;
 
-// --- For UFO near-miss ---
-let lastBonusMissFrame = -1000;
-
 function loseLifeOrGameOver() {
   playerLives--;
   updateHUD();
   if (playerLives <= 0) {
-    playLifeLost2Sound();
-    playGameOverSounds();
     gameOverOverlay.style.display = 'flex';
     isPaused = true;
     gameOverState = true;
   } else {
-    playLifeLost1Sound();
     player.x = 10;
     player.y = tileCount - 1;
     player.speedCounter = 0;
@@ -438,7 +325,7 @@ function loseLifeOrGameOver() {
       reqId = requestAnimationFrame(gameLoop);
     }, 500);
     isPaused = true;
-    overlay.textContent = "💥 Ouch! 💥";
+    overlay.textContent = " Ouch! ";
     overlay.style.display = "block";
     setTimeout(() => {
       overlay.style.display = "none";
@@ -572,43 +459,9 @@ function drawBonusScore() {
   }
 }
 
-function checkUfoNearMiss() {
-  if (!bonusEmoji) return;
-  let nearMiss = bullets.some(b =>
-    Math.abs(b.x - bonusEmoji.x) < 1.5 &&
-    Math.abs(b.y - bonusEmoji.y) < 0.6 &&
-    !(Math.abs(b.x - bonusEmoji.x) < 0.5 && Math.abs(b.y - bonusEmoji.y) < 0.5)
-  );
-  if (nearMiss && Date.now() - lastBonusMissFrame > 500) {
-    playRandomUfoMissSound();
-    lastBonusMissFrame = Date.now();
-  }
-}
-
-function isInvaderHittingActiveBunker(invaderY) {
-  for (const bunker of bunkers) {
-    for (let row = 0; row < bunker.height; row++) {
-      if (bunker.y + row === invaderY) {
-        for (let col = 0; col < bunker.width; col++) {
-          if (bunker.cells[row][col]) {
-            return true;
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
-
 function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  let effectiveInvaderSpeed = invaderSpeed;
-  let invaderNearBottom = invaders.some(inv => inv.y >= tileCount - 5);
-  if (invaderNearBottom) {
-    effectiveInvaderSpeed = Math.max(1, Math.floor(invaderSpeed * 0.75));
-  }
 
   bunkers.forEach(drawBunker);
 
@@ -664,13 +517,13 @@ function gameLoop() {
   bombs = bombs.filter(b => b.y < tileCount);
 
   invaderTick++;
-  if (invaderTick >= effectiveInvaderSpeed) {
+  if (invaderTick >= invaderSpeed) {
     let hitEdge = false;
     for (let i = 0; i < invaders.length; i++) {
       invaders[i].x += invaderDir;
       if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
       if (Math.random() < 0.004) {
-        bombs.push({ x: invaders[i].x, y: invaders[i].y, emoji: "✨", vy: 0 });
+        bombs.push({ x: invaders[i].x, y: invaders[i].y, emoji: "💣", vy: 0 });
       }
     }
     if (hitEdge) {
@@ -678,25 +531,31 @@ function gameLoop() {
       for (let i = 0; i < invaders.length; i++) {
         invaders[i].y += 1;
       }
-      playInvaderDownSound();
     }
     invaderTick = 0;
   }
 
-  let invaderAtBunkerOrPlayer = false;
-  for (let i = 0; i < invaders.length; i++) {
-    if (invaders[i].y === player.y || isInvaderHittingActiveBunker(invaders[i].y)) {
-      invaderAtBunkerOrPlayer = true;
-      break;
+  let bunkerRows = new Set();
+  for (const bunker of bunkers) {
+    for (let row = 0; row < bunker.height; row++) {
+      for (let col = 0; col < bunker.width; col++) {
+        if (bunker.cells[row][col]) {
+          bunkerRows.add(bunker.y + row);
+        }
+      }
     }
   }
-  if (invaderAtBunkerOrPlayer) {
-    playGameOverSounds();
-    gameOverOverlay.style.display = 'flex';
-    isPaused = true;
-    gameOverState = true;
-    try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
-    return;
+  for (let i = 0; i < invaders.length; i++) {
+    if (
+      invaders[i].y === player.y ||
+      bunkerRows.has(invaders[i].y)
+    ) {
+      gameOverOverlay.style.display = 'flex';
+      isPaused = true;
+      gameOverState = true;
+      try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
+      return;
+    }
   }
 
   let bulletIndicesToRemove = new Set();
@@ -755,11 +614,10 @@ function gameLoop() {
   drawBonusEmoji();
   handleBulletBonusCollision();
   drawBonusScore();
-  checkUfoNearMiss();
 
-  drawEmoji(player.x, player.y, "💩");
-  bullets.forEach(b => drawEmoji(b.x, Math.round(b.y), "💥"));
-  bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), "✨", true));
+  drawEmoji(player.x, player.y, "🚀");
+  bullets.forEach(b => drawEmoji(b.x, Math.round(b.y), "🔫"));
+  bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), "💣", true));
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
 
   if (invaders.length === 0) {
@@ -776,7 +634,6 @@ function gameLoop() {
 updateHUD();
 gameLoop();
 
-// --- UI Button Controls ---
 document.getElementById("pauseBtn").onclick = () => {
   togglePause();
   focusGameCanvas();
