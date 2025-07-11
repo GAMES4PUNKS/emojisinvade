@@ -114,7 +114,7 @@ canvas {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 36vh;
+  height: 18vh; /* 50% less depth than 36vh */
   display: flex;
   z-index: 99;
   pointer-events: auto;
@@ -131,6 +131,7 @@ canvas {
   height: 100%;
   border: none;
   outline: none;
+  padding: 0 1vw;
 }
 #touch-controls .touch-btn.fire {
   background: rgba(200,0,0,0.8);
@@ -139,4 +140,15 @@ canvas {
 #touch-controls .touch-btn.move {
   background: rgba(30,40,200,0.7);
   border-radius: 1em 0 0 1em;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 600px) {
+  #touch-controls {
+    height: 12vh; /* Even less depth for very small screens */
+  }
+  #touch-controls .touch-btn {
+    font-size: 1.3em;
+    padding: 0 0.5vw;
+  }
 }
