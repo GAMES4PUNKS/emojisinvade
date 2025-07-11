@@ -320,7 +320,7 @@ function resetGame() {
   bombDropSpeed = 0.33;
   bulletTravelSpeed = 0.33;
   ufoSlowFactor = 0.33;
-  ufoBombDropChance = 0.05; // Reset UFO bomb drop chance for new game
+  ufoBombDropChance = 0.0125; // DROPPED RATE BY 75%
   spawnInvaderGrid();
   resetBunkers();
   updateHUD();
@@ -334,11 +334,12 @@ let gameOverState = false;
 let lastBonusMissFrame = -1000;
 
 // UFO bomb drop chance (increases per level)
-let ufoBombDropChance = 0.05;
+// DROPPED RATE BY 75% (multiply by 0.25)
+let ufoBombDropChance = 0.0125; // Was 0.05, now 75% less
 
 // Increase UFO bomb drop chance each level
 function advanceLevel() {
-  ufoBombDropChance += 0.05;
+  ufoBombDropChance += 0.0125; // Was 0.05, now 75% less for each level
 }
 
 function loseLifeOrGameOver() {
@@ -440,7 +441,7 @@ function updateBonusEmoji() {
     bonusEmoji.progress = 0;
   }
 
-  // UFO bomb drop logic
+  // UFO bomb drop logic (now 75% less frequent)
   if (Math.random() < ufoBombDropChance) {
     bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 });
     playUfoBombSound();
