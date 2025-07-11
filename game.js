@@ -78,6 +78,33 @@ for (let fs of fireSounds) {
   fs.volume = 1;
   fs.loop = false;
 }
+
+const invaderDownSound = new Audio('invaderdown.mp3');
+invaderDownSound.preload = 'auto';
+invaderDownSound.volume = 1;
+invaderDownSound.loop = false;
+
+const ufoMissSounds = [
+  new Audio('ufomiss.mp3'),
+  new Audio('ufomiss2.mp3'),
+  new Audio('ufomiss3.mp3')
+];
+ufoMissSounds.forEach(s => {
+  s.preload = 'auto';
+  s.volume = 1;
+  s.loop = false;
+});
+
+const lifeLost1Sound = new Audio('lifelost.mp3');
+lifeLost1Sound.preload = 'auto';
+lifeLost1Sound.volume = 1;
+lifeLost1Sound.loop = false;
+
+const lifeLost2Sound = new Audio('lifelost2.mp3');
+lifeLost2Sound.preload = 'auto';
+lifeLost2Sound.volume = 1;
+lifeLost2Sound.loop = false;
+
 function playRandomFireSound() {
   if (gameSoundsMuted) return;
   const idx = Math.floor(Math.random() * fireSounds.length);
@@ -86,12 +113,45 @@ function playRandomFireSound() {
     fireSounds[idx].play();
   } catch (e) {}
 }
+function playInvaderDownSound() {
+  if (gameSoundsMuted) return;
+  try {
+    invaderDownSound.currentTime = 0;
+    invaderDownSound.play();
+  } catch (e) {}
+}
+function playRandomUfoMissSound() {
+  if (gameSoundsMuted) return;
+  const idx = Math.floor(Math.random() * ufoMissSounds.length);
+  try {
+    ufoMissSounds[idx].currentTime = 0;
+    ufoMissSounds[idx].play();
+  } catch (e) {}
+}
+function playLifeLost1Sound() {
+  if (gameSoundsMuted) return;
+  try {
+    lifeLost1Sound.currentTime = 0;
+    lifeLost1Sound.play();
+  } catch (e) {}
+}
+function playLifeLost2Sound() {
+  if (gameSoundsMuted) return;
+  try {
+    lifeLost2Sound.currentTime = 0;
+    lifeLost2Sound.play();
+  } catch (e) {}
+}
 
 function updateGameSoundMute() {
   const v = gameSoundsMuted ? 0 : 1;
   ufoSound.volume = v;
   ufoHitSound.volume = v;
   fireSounds.forEach(fs => fs.volume = v);
+  invaderDownSound.volume = v;
+  ufoMissSounds.forEach(s => s.volume = v);
+  lifeLost1Sound.volume = v;
+  lifeLost2Sound.volume = v;
 }
 
 // Focus helper to prevent button spacebar bug
@@ -231,14 +291,19 @@ let isPaused = false;
 let reqId = null;
 let gameOverState = false;
 
+// --- For UFO near-miss ---
+let lastBonusMissFrame = -1000;
+
 function loseLifeOrGameOver() {
   playerLives--;
   updateHUD();
   if (playerLives <= 0) {
+    playLifeLost2Sound();
     gameOverOverlay.style.display = 'flex';
     isPaused = true;
     gameOverState = true;
   } else {
+    playLifeLost1Sound();
     player.x = 10;
     player.y = tileCount - 1;
     player.speedCounter = 0;
@@ -382,9 +447,32 @@ function drawBonusScore() {
   }
 }
 
+// UFO Near Miss Logic
+function checkUfoNearMiss() {
+  if (!bonusEmoji) return;
+  // If a bullet is within 1.5 cells horizontally and y-aligned (but not a hit) and passes within the last 2 frames
+  let nearMiss = bullets.some(b =>
+    Math.abs(b.x - bonusEmoji.x) < 1.5 &&
+    Math.abs(b.y - bonusEmoji.y) < 0.6 &&
+    !(Math.abs(b.x - bonusEmoji.x) < 0.5 && Math.abs(b.y - bonusEmoji.y) < 0.5)
+  );
+  // Only trigger once every 500ms
+  if (nearMiss && Date.now() - lastBonusMissFrame > 500) {
+    playRandomUfoMissSound();
+    lastBonusMissFrame = Date.now();
+  }
+}
+
 function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // --- SPEED UP INVADERS IF ANY ARE 5 CELLS FROM THE BOTTOM ---
+  let effectiveInvaderSpeed = invaderSpeed;
+  let invaderNearBottom = invaders.some(inv => inv.y >= tileCount - 5);
+  if (invaderNearBottom) {
+    effectiveInvaderSpeed = Math.max(1, Math.floor(invaderSpeed * 0.75));
+  }
 
   bunkers.forEach(drawBunker);
 
@@ -439,8 +527,9 @@ function gameLoop() {
   });
   bombs = bombs.filter(b => b.y < tileCount);
 
+  // --------- USE effectiveInvaderSpeed for this frame ---------
   invaderTick++;
-  if (invaderTick >= invaderSpeed) {
+  if (invaderTick >= effectiveInvaderSpeed) {
     let hitEdge = false;
     for (let i = 0; i < invaders.length; i++) {
       invaders[i].x += invaderDir;
@@ -454,6 +543,8 @@ function gameLoop() {
       for (let i = 0; i < invaders.length; i++) {
         invaders[i].y += 1;
       }
+      // Play invaderdown.mp3 when invaders move down a row
+      playInvaderDownSound();
     }
     invaderTick = 0;
   }
@@ -537,6 +628,7 @@ function gameLoop() {
   drawBonusEmoji();
   handleBulletBonusCollision();
   drawBonusScore();
+  checkUfoNearMiss();
 
   drawEmoji(player.x, player.y, "💩");
   bullets.forEach(b => drawEmoji(b.x, Math.round(b.y), "💥"));
