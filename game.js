@@ -72,7 +72,7 @@ const fireSounds = [
   new Audio('fire2.mp3'),
   new Audio('fire3.mp3'),
   new Audio('fire4.mp3'),
-  new Audio('fire5.mp3') // Added fire5.mp3 as requested
+  new Audio('fire5.mp3')
 ];
 for (let fs of fireSounds) {
   fs.preload = 'auto';
@@ -213,8 +213,17 @@ function getBunkerXs() {
   ];
 }
 const BUNKER_W = 3, BUNKER_H = 3;
+
+// --- Bunker HP logic ---
+let bunkerLevel = 0; // Tracks current level for HP logic
+function getBunkerCellHp() {
+  return Math.max(1, 5 - bunkerLevel * 0.05);
+}
 function makeCells() {
-  return Array.from({length: BUNKER_H}, () => Array(BUNKER_W).fill(true));
+  // Each cell is an object: { hp: getBunkerCellHp() }
+  return Array.from({length: BUNKER_H}, () =>
+    Array.from({length: BUNKER_W}, () => ({ hp: getBunkerCellHp() }))
+  );
 }
 function buildBunkers() {
   const y = getBunkerY();
@@ -230,25 +239,20 @@ let bunkers = buildBunkers();
 function drawBunker(bunker) {
   for (let row = 0; row < bunker.height; row++) {
     for (let col = 0; col < bunker.width; col++) {
-      if (bunker.cells[row][col]) {
+      const cell = bunker.cells[row][col];
+      if (cell && cell.hp > 0) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0.25, cell.hp / getBunkerCellHp());
         ctx.drawImage(
           shitImg,
           (bunker.x + col) * gridSize,
           (bunker.y + row) * gridSize,
           gridSize, gridSize
         );
+        ctx.restore();
       }
     }
   }
-}
-
-function drawEmoji(x, y, emoji, flicker = false, customSize = null, phase = 0) {
-  ctx.font = (customSize ? customSize : gridSize) + "px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif";
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150 + phase));
-  ctx.fillText(emoji, x * gridSize + gridSize / 2, y * gridSize + gridSize / 2);
-  ctx.globalAlpha = 1;
 }
 
 function updateHUD() {
@@ -320,9 +324,10 @@ function resetGame() {
   bombDropSpeed = 0.33;
   bulletTravelSpeed = 0.33;
   ufoSlowFactor = 0.33;
-  ufoBombDropChance = 0.0125; // DROPPED RATE BY 75%
-  spawnInvaderGrid();
+  ufoBombDropChance = 0.0125;
+  bunkerLevel = 0;
   resetBunkers();
+  spawnInvaderGrid();
   updateHUD();
 }
 
@@ -334,12 +339,13 @@ let gameOverState = false;
 let lastBonusMissFrame = -1000;
 
 // UFO bomb drop chance (increases per level)
-// DROPPED RATE BY 75% (multiply by 0.25)
-let ufoBombDropChance = 0.0125; // Was 0.05, now 75% less
+let ufoBombDropChance = 0.0125;
 
-// Increase UFO bomb drop chance each level
+// --- Bunker HP decrease per level
 function advanceLevel() {
-  ufoBombDropChance += 0.0125; // Was 0.05, now 75% less for each level
+  ufoBombDropChance += 0.0125;
+  bunkerLevel++;
+  resetBunkers();
 }
 
 function loseLifeOrGameOver() {
@@ -441,7 +447,6 @@ function updateBonusEmoji() {
     bonusEmoji.progress = 0;
   }
 
-  // UFO bomb drop logic (now 75% less frequent)
   if (Math.random() < ufoBombDropChance) {
     bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 });
     playUfoBombSound();
@@ -543,17 +548,19 @@ function gameLoop() {
     shooting = false;
   }
 
+  // Bullets damage bunker cell
   let bulletsAfter = [];
   for (let b of bullets) {
     let hit = false;
     for (const bunker of bunkers) {
       for (let row = 0; row < bunker.height; row++) {
         for (let col = 0; col < bunker.width; col++) {
+          const cell = bunker.cells[row][col];
           if (
-            bunker.cells[row][col] &&
+            cell && cell.hp > 0 &&
             Math.round(b.x) === bunker.x + col && Math.round(b.y) === bunker.y + row
           ) {
-            bunker.cells[row][col] = false;
+            cell.hp--;
             hit = true;
           }
         }
@@ -563,23 +570,33 @@ function gameLoop() {
   }
   bullets = bulletsAfter;
 
-  bullets.forEach(b => {
-    b.vy = (b.vy || 0) + bulletTravelSpeed;
-    if (b.vy >= 1) {
-      b.y -= Math.floor(b.vy);
-      b.vy = b.vy % 1;
+  // Bombs damage bunker cell
+  let bombsAfter = [];
+  for (let b of bombs) {
+    let hit = false;
+    for (const bunker of bunkers) {
+      for (let row = 0; row < bunker.height; row++) {
+        for (let col = 0; col < bunker.width; col++) {
+          const cell = bunker.cells[row][col];
+          if (
+            cell && cell.hp > 0 &&
+            b.x === bunker.x + col && Math.round(b.y) === bunker.y + row
+          ) {
+            cell.hp--;
+            hit = true;
+          }
+        }
+      }
     }
-  });
-  bullets = bullets.filter(b => b.y >= 0);
-
-  bombs.forEach(b => {
-    b.vy = (b.vy || 0) + bombDropSpeed;
-    if (b.vy >= 1) {
-      b.y += Math.floor(b.vy);
-      b.vy = b.vy % 1;
+    if (hit) continue;
+    if (b.x === player.x && Math.round(b.y) === player.y) {
+      loseLifeOrGameOver();
+      try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
+      return;
     }
-  });
-  bombs = bombs.filter(b => b.y < tileCount);
+    bombsAfter.push(b);
+  }
+  bombs = bombsAfter;
 
   invaderTick++;
   if (invaderTick >= effectiveInvaderSpeed) {
@@ -601,11 +618,13 @@ function gameLoop() {
     invaderTick = 0;
   }
 
+  // Invader damages bunker cell if collides
   let bunkerRows = new Set();
   for (const bunker of bunkers) {
     for (let row = 0; row < bunker.height; row++) {
       for (let col = 0; col < bunker.width; col++) {
-        if (bunker.cells[row][col]) {
+        const cell = bunker.cells[row][col];
+        if (cell && cell.hp > 0) {
           bunkerRows.add(bunker.y + row);
         }
       }
@@ -617,6 +636,17 @@ function gameLoop() {
       invaders[i].y === player.y ||
       bunkerRows.has(invaders[i].y)
     ) {
+      // If invader is at bunker row, damage all bunker cells in that row (requires n hits to destroy each)
+      for (const bunker of bunkers) {
+        for (let row = 0; row < bunker.height; row++) {
+          if (bunker.y + row === invaders[i].y) {
+            for (let col = 0; col < bunker.width; col++) {
+              const cell = bunker.cells[row][col];
+              if (cell && cell.hp > 0) cell.hp--;
+            }
+          }
+        }
+      }
       invaderAtBunker = true;
       break;
     }
@@ -655,32 +685,6 @@ function gameLoop() {
     return true;
   });
 
-  let bombsAfter = [];
-  for (let b of bombs) {
-    let hit = false;
-    for (const bunker of bunkers) {
-      for (let row = 0; row < bunker.height; row++) {
-        for (let col = 0; col < bunker.width; col++) {
-          if (
-            bunker.cells[row][col] &&
-            b.x === bunker.x + col && Math.round(b.y) === bunker.y + row
-          ) {
-            bunker.cells[row][col] = false;
-            hit = true;
-          }
-        }
-      }
-    }
-    if (hit) continue;
-    if (b.x === player.x && Math.round(b.y) === player.y) {
-      loseLifeOrGameOver();
-      try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
-      return;
-    }
-    bombsAfter.push(b);
-  }
-  bombs = bombsAfter;
-
   maybeSpawnBonusEmoji();
   updateBonusEmoji();
   drawBonusEmoji();
@@ -698,7 +702,7 @@ function gameLoop() {
     bombDropSpeed = Math.min(2, bombDropSpeed + 0.2);
     bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
     spawnInvaderGrid();
-    advanceLevel();
+    advanceLevel(); // HP decrease logic is applied here
   }
 
   updateHUD();
