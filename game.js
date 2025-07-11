@@ -1,4 +1,4 @@
-// Emoji Invaders Game
+// Emoji Invaders Game – Touch/PC Ready (no style change)
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -58,62 +58,39 @@ let gameSoundsMuted = false;
 
 // ---- SOUND EFFECTS ----
 const ufoSound = new Audio('ufo.mp3');
-ufoSound.preload = 'auto';
-ufoSound.volume = 1;
-ufoSound.loop = false;
-
 const ufoHitSound = new Audio('ufo2.mp3');
-ufoHitSound.preload = 'auto';
-ufoHitSound.volume = 1;
-ufoHitSound.loop = false;
-
 const fireSounds = [
   new Audio('fire.mp3'),
   new Audio('fire2.mp3'),
   new Audio('fire3.mp3'),
   new Audio('fire4.mp3')
 ];
-for (let fs of fireSounds) {
-  fs.preload = 'auto';
-  fs.volume = 1;
-  fs.loop = false;
-}
-
 const invaderDownSound = new Audio('invaderdown.mp3');
-invaderDownSound.preload = 'auto';
-invaderDownSound.volume = 1;
-invaderDownSound.loop = false;
-
 const ufoMissSounds = [
   new Audio('ufomiss.mp3'),
   new Audio('ufomiss2.mp3'),
   new Audio('ufomiss3.mp3')
 ];
+const lifeLost1Sound = new Audio('lifelost.mp3');
+const lifeLost2Sound = new Audio('lifelost2.mp3');
+const gameOverSound1 = new Audio('gameover.mp3');
+const gameOverSound2 = new Audio('gameover2.mp3');
+
+[ufoSound, ufoHitSound, invaderDownSound, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2].forEach(sound => {
+  sound.preload = 'auto';
+  sound.volume = 1;
+  sound.loop = false;
+});
+fireSounds.forEach(fs => {
+  fs.preload = 'auto';
+  fs.volume = 1;
+  fs.loop = false;
+});
 ufoMissSounds.forEach(s => {
   s.preload = 'auto';
   s.volume = 1;
   s.loop = false;
 });
-
-const lifeLost1Sound = new Audio('lifelost.mp3');
-lifeLost1Sound.preload = 'auto';
-lifeLost1Sound.volume = 1;
-lifeLost1Sound.loop = false;
-
-const lifeLost2Sound = new Audio('lifelost2.mp3');
-lifeLost2Sound.preload = 'auto';
-lifeLost2Sound.volume = 1;
-lifeLost2Sound.loop = false;
-
-const gameOverSound1 = new Audio('gameover.mp3');
-gameOverSound1.preload = 'auto';
-gameOverSound1.volume = 1;
-gameOverSound1.loop = false;
-
-const gameOverSound2 = new Audio('gameover2.mp3');
-gameOverSound2.preload = 'auto';
-gameOverSound2.volume = 1;
-gameOverSound2.loop = false;
 
 function playRandomFireSound() {
   if (gameSoundsMuted) return;
@@ -166,15 +143,9 @@ function playGameOverSounds() {
 
 function updateGameSoundMute() {
   const v = gameSoundsMuted ? 0 : 1;
-  ufoSound.volume = v;
-  ufoHitSound.volume = v;
+  [ufoSound, ufoHitSound, invaderDownSound, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2].forEach(sound => sound.volume = v);
   fireSounds.forEach(fs => fs.volume = v);
-  invaderDownSound.volume = v;
   ufoMissSounds.forEach(s => s.volume = v);
-  lifeLost1Sound.volume = v;
-  lifeLost2Sound.volume = v;
-  gameOverSound1.volume = v;
-  gameOverSound2.volume = v;
 }
 
 // Focus helper to prevent button spacebar bug
@@ -271,28 +242,158 @@ spawnInvaderGrid();
 let left = false, right = false, shooting = false;
 let firePressed = false;
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft' || e.key === 'a') left = true;
-  if (e.key === 'ArrowRight' || e.key === 'd') right = true;
-  if ((e.key === ' ' || e.key === 'z' || e.key === 'j') && !firePressed) {
-    shooting = true;
-    firePressed = true;
+// --- PC Controls ---
+function enablePCControls() {
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd') right = true;
+    if ((e.key === ' ' || e.key === 'z' || e.key === 'j') && !firePressed) {
+      shooting = true;
+      firePressed = true;
+    }
+    if (e.key.toLowerCase() === 'p') togglePause();
+  });
+  document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a') left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') right = false;
+    if (e.key === ' ' || e.key === 'z' || e.key === 'j') {
+      shooting = false;
+      firePressed = false;
+    }
+  });
+}
+
+// --- Touch Controls ---
+function enableTouchControls() {
+  // Create overlay only if not present
+  if (!document.getElementById('touch-controls')) {
+    const container = document.createElement('div');
+    container.id = 'touch-controls';
+    container.style.position = 'fixed';
+    container.style.left = '0';
+    container.style.right = '0';
+    container.style.bottom = '0';
+    container.style.height = '36vh';
+    container.style.display = 'flex';
+    container.style.zIndex = 99;
+    container.style.pointerEvents = 'auto';
+
+    // Fire button (left)
+    const fireBtn = document.createElement('div');
+    fireBtn.textContent = '🔥 FIRE';
+    fireBtn.style.flex = '0 0 30%';
+    fireBtn.style.background = 'rgba(200,0,0,0.8)';
+    fireBtn.style.color = '#fff';
+    fireBtn.style.display = 'flex';
+    fireBtn.style.justifyContent = 'center';
+    fireBtn.style.alignItems = 'center';
+    fireBtn.style.fontSize = '2em';
+    fireBtn.style.userSelect = 'none';
+    fireBtn.style.borderRadius = '0 1em 1em 0';
+    fireBtn.style.marginRight = '4vw';
+    // Touch event for firing
+    fireBtn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      shooting = true;
+      firePressed = true;
+    });
+    fireBtn.addEventListener('touchend', e => {
+      e.preventDefault();
+      shooting = false;
+      firePressed = false;
+    });
+
+    // Move area (right)
+    const moveArea = document.createElement('div');
+    moveArea.style.flex = '1';
+    moveArea.style.background = 'rgba(30,40,200,0.7)';
+    moveArea.style.display = 'flex';
+    moveArea.style.justifyContent = 'center';
+    moveArea.style.alignItems = 'center';
+    moveArea.style.userSelect = 'none';
+    moveArea.style.fontSize = '2em';
+    moveArea.style.borderRadius = '1em 0 0 1em';
+
+    // Add arrows
+    const leftArrow = document.createElement('span');
+    leftArrow.textContent = '←';
+    leftArrow.style.flex = '1';
+    leftArrow.style.textAlign = 'center';
+    leftArrow.style.fontSize = '2em';
+    leftArrow.style.color = '#fff';
+
+    const rightArrow = document.createElement('span');
+    rightArrow.textContent = '→';
+    rightArrow.style.flex = '1';
+    rightArrow.style.textAlign = 'center';
+    rightArrow.style.fontSize = '2em';
+    rightArrow.style.color = '#fff';
+
+    moveArea.append(leftArrow, rightArrow);
+
+    // Touch handlers for movement
+    let moveTouchId = null;
+    moveArea.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 1) {
+        moveTouchId = e.touches[0].identifier;
+        const x = e.touches[0].clientX;
+        const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
+        if (x < mid) {
+          left = true; right = false;
+        } else {
+          right = true; left = false;
+        }
+      }
+    });
+    moveArea.addEventListener('touchmove', function(e) {
+      for (let i = 0; i < e.touches.length; i++) {
+        const touch = e.touches[i];
+        if (moveTouchId !== null && touch.identifier === moveTouchId) {
+          const x = touch.clientX;
+          const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
+          if (x < mid) {
+            left = true; right = false;
+          } else {
+            right = true; left = false;
+          }
+        }
+      }
+    });
+    moveArea.addEventListener('touchend', function(e) {
+      left = false; right = false; moveTouchId = null;
+    });
+
+    container.appendChild(fireBtn);
+    container.appendChild(moveArea);
+    document.body.appendChild(container);
   }
-  if (e.key.toLowerCase() === 'p') togglePause();
-});
-document.addEventListener('keyup', e => {
-  if (e.key === 'ArrowLeft' || e.key === 'a') left = false;
-  if (e.key === 'ArrowRight' || e.key === 'd') right = false;
-  if (e.key === ' ' || e.key === 'z' || e.key === 'j') {
-    shooting = false;
-    firePressed = false;
+}
+
+// --- Device/Mode Detection ---
+function isTouchOnly() {
+  return ('ontouchstart' in window || navigator.maxTouchPoints > 0) &&
+    !window.matchMedia('(pointer: fine)').matches;
+}
+
+function configureControls() {
+  if (isTouchOnly()) {
+    enableTouchControls();
+  } else {
+    enablePCControls();
+    if (document.getElementById('touch-controls')) {
+      document.getElementById('touch-controls').remove();
+    }
   }
-});
+}
+configureControls();
+window.addEventListener('resize', configureControls);
+window.addEventListener('orientationchange', configureControls);
+
+// --- Rest of game logic unchanged ---
 
 function resetBunkers() {
   bunkers = buildBunkers();
 }
-
 function resetGame() {
   score = 0;
   bullets = [];
@@ -471,27 +572,38 @@ function drawBonusScore() {
   }
 }
 
-// UFO Near Miss Logic
 function checkUfoNearMiss() {
   if (!bonusEmoji) return;
-  // If a bullet is within 1.5 cells horizontally and y-aligned (but not a hit) and passes within the last 2 frames
   let nearMiss = bullets.some(b =>
     Math.abs(b.x - bonusEmoji.x) < 1.5 &&
     Math.abs(b.y - bonusEmoji.y) < 0.6 &&
     !(Math.abs(b.x - bonusEmoji.x) < 0.5 && Math.abs(b.y - bonusEmoji.y) < 0.5)
   );
-  // Only trigger once every 500ms
   if (nearMiss && Date.now() - lastBonusMissFrame > 500) {
     playRandomUfoMissSound();
     lastBonusMissFrame = Date.now();
   }
 }
 
+function isInvaderHittingActiveBunker(invaderY) {
+  for (const bunker of bunkers) {
+    for (let row = 0; row < bunker.height; row++) {
+      if (bunker.y + row === invaderY) {
+        for (let col = 0; col < bunker.width; col++) {
+          if (bunker.cells[row][col]) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
 function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // --- SPEED UP INVADERS IF ANY ARE 5 CELLS FROM THE BOTTOM ---
   let effectiveInvaderSpeed = invaderSpeed;
   let invaderNearBottom = invaders.some(inv => inv.y >= tileCount - 5);
   if (invaderNearBottom) {
@@ -551,7 +663,6 @@ function gameLoop() {
   });
   bombs = bombs.filter(b => b.y < tileCount);
 
-  // --------- USE effectiveInvaderSpeed for this frame ---------
   invaderTick++;
   if (invaderTick >= effectiveInvaderSpeed) {
     let hitEdge = false;
@@ -567,35 +678,20 @@ function gameLoop() {
       for (let i = 0; i < invaders.length; i++) {
         invaders[i].y += 1;
       }
-      // Play invaderdown.mp3 when invaders move down a row
       playInvaderDownSound();
     }
     invaderTick = 0;
   }
 
-  // --- GAME OVER IF INVADER HITS BUNKER ---
-  let bunkerRows = new Set();
-  for (const bunker of bunkers) {
-    for (let row = 0; row < bunker.height; row++) {
-      for (let col = 0; col < bunker.width; col++) {
-        if (bunker.cells[row][col]) {
-          bunkerRows.add(bunker.y + row);
-        }
-      }
-    }
-  }
-  let invaderAtBunker = false;
+  let invaderAtBunkerOrPlayer = false;
   for (let i = 0; i < invaders.length; i++) {
-    if (
-      invaders[i].y === player.y ||
-      bunkerRows.has(invaders[i].y)
-    ) {
-      invaderAtBunker = true;
+    if (invaders[i].y === player.y || isInvaderHittingActiveBunker(invaders[i].y)) {
+      invaderAtBunkerOrPlayer = true;
       break;
     }
   }
-  if (invaderAtBunker) {
-    playGameOverSounds(); // <- Play both gameover.mp3 and gameover2.mp3
+  if (invaderAtBunkerOrPlayer) {
+    playGameOverSounds();
     gameOverOverlay.style.display = 'flex';
     isPaused = true;
     gameOverState = true;
@@ -680,6 +776,7 @@ function gameLoop() {
 updateHUD();
 gameLoop();
 
+// --- UI Button Controls ---
 document.getElementById("pauseBtn").onclick = () => {
   togglePause();
   focusGameCanvas();
