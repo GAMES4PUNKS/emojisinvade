@@ -341,7 +341,7 @@ let lastBonusMissFrame = -1000;
 // UFO bomb drop chance (increases per level)
 let ufoBombDropChance = 0.0125;
 
-// --- Bunker HP decrease per level
+// --- Bunker HP decrease per level (becomes easier to destroy)
 function advanceLevel() {
   ufoBombDropChance += 0.0125;
   bunkerLevel++;
