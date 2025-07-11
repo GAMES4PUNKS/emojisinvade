@@ -1,6 +1,5 @@
 // Emoji Invaders Game - Full JavaScript
 
-// --- Configurable emoji bank ---
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
   "😍","🥰","😘","😗","😙","😚","😐","😑","😶","🙄","😏","😣","😥","😮",
@@ -18,12 +17,12 @@ const emojiBank = [
   "❤️","🧡","💛","💚","💙","💜","🤍","🤎","💔"
 ];
 
-// --- Emoji bonus scores ---
+// Emoji bonus scores (each emoji has a unique score)
 const emojiBonusScores = {};
 for (let i = 0; i < emojiBank.length; i++)
   emojiBonusScores[emojiBank[i]] = 1000 + i * 50;
 
-// --- Canvas setup ---
+// Canvas setup
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 400;
@@ -31,7 +30,7 @@ canvas.height = 400;
 const gridSize = 20;
 const tileCount = canvas.width / gridSize;
 
-// --- Game state ---
+// Game state
 let score = 0;
 let highScore = Number(localStorage.getItem("high_score") || 0);
 const player = { x: 10, y: tileCount - 1, speedCounter: 0 };
@@ -51,7 +50,7 @@ const highScoreDisplay = document.getElementById("highScoreDisplay");
 const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 
-// --- Sound logic ---
+// Sound logic
 let gameSoundsMuted = false;
 const fireSounds = [
   new Audio('fire.mp3'), new Audio('fire2.mp3'), new Audio('fire3.mp3'),
@@ -81,7 +80,7 @@ function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.cur
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
 function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound].forEach(a => a.volume = v); }
 
-// --- Bunker logic ---
+// Bunker logic
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 const BUNKER_W = 3, BUNKER_H = 3;
@@ -106,7 +105,7 @@ function drawBunker(bunker) {
 }
 function resetBunkers() { bunkers = buildBunkers(); }
 
-// --- HUD ---
+// HUD
 function updateHUD() {
   scoreDisplay.textContent = `Score: ${score}`;
   highScoreDisplay.textContent = `High Score: ${highScore}`;
@@ -119,7 +118,7 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-// --- Invader logic ---
+// Invader logic
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 10; row++) {
@@ -140,7 +139,7 @@ function spawnInvaderGrid() {
 }
 spawnInvaderGrid();
 
-// --- Controls ---
+// Controls
 let left = false, right = false, shooting = false;
 let firePressed = false;
 document.addEventListener('keydown', e => {
@@ -155,7 +154,7 @@ document.addEventListener('keyup', e => {
   if (e.key === ' ' || e.key === 'z' || e.key === 'j') { shooting = false; firePressed = false; }
 });
 
-// --- Game reset logic ---
+// Game reset logic
 function resetGame() {
   score = 0;
   bullets = [];
@@ -179,7 +178,7 @@ let isPaused = false;
 let reqId = null;
 let gameOverState = false;
 
-// --- UFO Logic ---
+// UFO Logic
 let lastBonusMissFrame = -1000;
 let ufoBombDropChance = 0.0125;
 let bonusEmoji = null;
@@ -250,7 +249,7 @@ function checkUfoNearMiss() {
   if (nearMiss && Date.now() - lastBonusMissFrame > 500) { playRandomUfoMissSound(); lastBonusMissFrame = Date.now(); }
 }
 
-// --- Drawing emojis ---
+// Drawing emojis
 function drawEmoji(x, y, emoji, flicker = false, customSize = null, phase = 0) {
   ctx.font = (customSize ? customSize : gridSize) + "px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif";
   ctx.textAlign = 'center';
@@ -260,7 +259,7 @@ function drawEmoji(x, y, emoji, flicker = false, customSize = null, phase = 0) {
   ctx.globalAlpha = 1;
 }
 
-// --- Main game loop ---
+// Main game loop
 function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -301,7 +300,7 @@ function gameLoop() {
   }
   bullets = bulletsAfter;
 
-  // Bombs damage bunker cell
+  // Bombs damage bunker cell and player
   let bombsAfter = [];
   for (let b of bombs) {
     let hit = false;
@@ -316,7 +315,7 @@ function gameLoop() {
         }
     if (hit) continue;
     if (b.x === player.x && Math.round(b.y) === player.y) {
-      loseLifeOrGameOver();
+      loseLifeOrGameOver(true); // true for bomb hit
       try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
       return;
     }
@@ -419,16 +418,21 @@ function gameLoop() {
   reqId = requestAnimationFrame(gameLoop);
 }
 
-// --- Advance level logic (bunker HP gets easier to destroy) ---
+// Advance level logic (bunker HP gets easier to destroy)
 function advanceLevel() {
   ufoBombDropChance += 0.0125;
   bunkerLevel++;
   resetBunkers();
 }
 
-// --- Life/game over logic ---
-function loseLifeOrGameOver() {
+// Life/game over logic
+function loseLifeOrGameOver(bombHit = false) {
   playerLives--;
+  if (bombHit) {
+    // Lose 50% of score if hit by a bomb
+    score = Math.floor(score * 0.5);
+    updateHUD();
+  }
   updateHUD();
   if (playerLives <= 0) {
     playLifeLost2Sound();
@@ -451,7 +455,7 @@ function loseLifeOrGameOver() {
   }
 }
 
-// --- Pause/restart controls ---
+// Pause/restart controls
 function manualRestart() {
   if (!gameOverState) return;
   gameOverOverlay.style.display = 'none';
@@ -468,60 +472,16 @@ function togglePause() {
 updateHUD();
 gameLoop();
 
-// --- UI buttons ---
-document.getElementById("pauseBtn").onclick = () => { togglePause(); focusGameCanvas(); };
-document.getElementById("muteBtn").onclick = () => { gameSoundsMuted = !gameSoundsMuted; updateGameSoundMute(); document.getElementById("muteBtn").textContent = gameSoundsMuted ? "🔇" : "🔊"; focusGameCanvas(); };
-document.getElementById("speedSelect").onchange = (e) => { invaderSpeed = Number(e.target.value); focusGameCanvas(); };
+// UI buttons
+document.getElementById("pauseBtn").onclick = () => { togglePause(); canvas.focus(); };
+document.getElementById("muteBtn").onclick = () => { gameSoundsMuted = !gameSoundsMuted; updateGameSoundMute(); document.getElementById("muteBtn").textContent = gameSoundsMuted ? "🔇" : "🔊"; canvas.focus(); };
+document.getElementById("speedSelect").onchange = (e) => { invaderSpeed = Number(e.target.value); canvas.focus(); };
 window.addEventListener('keydown', function(e) {
   if (e.key === "Escape") {
     const popup = document.getElementById("loginPopup");
-    if (popup && popup.style.display === "block") { popup.style.display = "none"; focusGameCanvas(); }
+    if (popup && popup.style.display === "block") { popup.style.display = "none"; canvas.focus(); }
   }
   if (gameOverState && (e.key === "Enter" || e.key === " ")) manualRestart();
 });
 canvas.addEventListener('mousedown', manualRestart);
 canvas.addEventListener('touchstart', manualRestart);
-
-// --- Touch Controls Setup ---
-function enableTouchControls() {
-  const container = document.getElementById('touch-controls');
-  if (!container) return;
-  const fireBtn = container.querySelector('.touch-btn.fire');
-  fireBtn.addEventListener('touchstart', e => { e.preventDefault(); shooting = true; firePressed = true; });
-  fireBtn.addEventListener('touchend', e => { e.preventDefault(); shooting = false; firePressed = false; });
-  const moveArea = container.querySelector('.touch-btn.move');
-  let moveTouchId = null;
-  moveArea.addEventListener('touchstart', function(e) {
-    if (e.touches.length === 1) {
-      moveTouchId = e.touches[0].identifier;
-      const x = e.touches[0].clientX;
-      const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
-      if (x < mid) { left = true; right = false; } else { right = true; left = false; }
-    }
-  });
-  moveArea.addEventListener('touchmove', function(e) {
-    for (let i = 0; i < e.touches.length; i++) {
-      const touch = e.touches[i];
-      if (moveTouchId !== null && touch.identifier === moveTouchId) {
-        const x = touch.clientX;
-        const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
-        if (x < mid) { left = true; right = false; } else { right = true; left = false; }
-      }
-    }
-  });
-  moveArea.addEventListener('touchend', function(e) { left = false; right = false; moveTouchId = null; });
-}
-function isTouchOnly() { return (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0); }
-function configureControls() {
-  if (isTouchOnly()) {
-    enableTouchControls();
-    document.getElementById('touch-controls').style.display = 'flex';
-    document.body.style.overflowY = 'auto';
-  } else {
-    document.getElementById('touch-controls').style.display = 'none';
-    document.body.style.overflowY = 'hidden';
-  }
-}
-configureControls();
-window.addEventListener('resize', configureControls);
-window.addEventListener('orientationchange', configureControls);
