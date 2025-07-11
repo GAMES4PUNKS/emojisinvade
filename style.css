@@ -8,28 +8,42 @@ body {
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
+  height: 100vh;
+  overflow: hidden; /* Prevent scrollbars on desktop */
 }
 
-/* Add bottom margin so canvas/buttons never overlap touch controls */
+canvas {
+  width: 90vmin;
+  height: 90vmin;
+  max-width: 90vw;
+  max-height: 90vw;
+  background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
+  box-shadow: 0 0 20px #a020f0;
+  margin-top: 1rem;
+  display: block;
+}
+
 #game-container {
   position: relative;
   width: 90vmin;
   max-width: 90vw;
   margin-top: 1rem;
-  margin-bottom: 4vh; /* space for touch controls */
+  margin-bottom: 0 !important; /* No gap on desktop */
 }
+
 #statusBarCombined {
   display: flex;
   font-size: 1rem;
   color: white;
   margin-top: 0.5rem;
-  margin-bottom: 3vh; /* space for touch controls */
+  margin-bottom: 0 !important; /* No gap on desktop */
   justify-content: center;
   align-items: center;
   gap: 0.7em;
   flex-wrap: wrap;
   font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
 }
+
 #statusBarCombined span,
 #statusBarCombined button,
 #statusBarCombined select {
@@ -49,16 +63,6 @@ body {
   height: 1px; width: 1px;
   overflow: hidden;
   clip: rect(1px, 1px, 1px, 1px);
-}
-canvas {
-  width: 90vmin;
-  height: 90vmin;
-  max-width: 90vw;
-  max-height: 90vw;
-  background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
-  box-shadow: 0 0 20px #a020f0;
-  margin-top: 1rem;
-  display: block;
 }
 #overlay, #gameOverOverlay {
   position: absolute;
@@ -111,53 +115,70 @@ canvas {
   cursor: pointer;
 }
 
-/* Touch Controls Overlay */
+/* Touch Controls Overlay - initially hidden for desktop */
 #touch-controls {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 14vh;
-  display: flex;
-  z-index: 99;
-  pointer-events: auto;
-}
-#touch-controls > div {
-  user-select: none;
-}
-#touch-controls .touch-btn {
-  font-size: 2em;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  border: none;
-  outline: none;
-  padding: 0 1vw;
-}
-#touch-controls .touch-btn.fire {
-  background: rgba(200,0,0,0.8);
-  border-radius: 0 1em 1em 0;
-}
-#touch-controls .touch-btn.move {
-  background: rgba(30,40,200,0.7);
-  border-radius: 1em 0 0 1em;
+  display: none; /* only shown on touch devices via JS or media query */
 }
 
-/* Responsive adjustments for smaller screens */
-@media (max-width: 600px) {
+/* On touch devices, show touch controls and pad out bottom so no overlap */
+@media (pointer: coarse), (max-width: 900px) {
   #touch-controls {
-    height: 10vh; /* Even less depth for very small screens */
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 12vh;
+    display: flex;
+    z-index: 99;
+    pointer-events: auto;
+  }
+  #touch-controls > div {
+    user-select: none;
   }
   #touch-controls .touch-btn {
-    font-size: 1.2em;
+    font-size: 1.3em;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    border: none;
+    outline: none;
     padding: 0 0.5vw;
   }
+  #touch-controls .touch-btn.fire {
+    background: rgba(200,0,0,0.8);
+    border-radius: 0 1em 1em 0;
+  }
+  #touch-controls .touch-btn.move {
+    background: rgba(30,40,200,0.7);
+    border-radius: 1em 0 0 1em;
+  }
+
+  /* Add bottom margin so canvas/statusBar never overlap touch controls */
   #game-container {
-    margin-bottom: 8vh;
+    margin-bottom: 14vh !important;
   }
   #statusBarCombined {
-    margin-bottom: 6vh;
+    margin-bottom: 12vh !important;
+  }
+
+  body {
+    overflow-y: auto; /* allow scrolling if needed on small screens */
+    height: auto;
+    min-height: 100vh;
+  }
+}
+
+/* Prevent double scrollbars on very small screens */
+@media (max-width: 600px) {
+  #touch-controls {
+    height: 10vh;
+  }
+  #game-container {
+    margin-bottom: 11vh !important;
+  }
+  #statusBarCombined {
+    margin-bottom: 10vh !important;
   }
 }
