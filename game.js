@@ -188,100 +188,23 @@ spawnInvaderGrid();
 let left = false, right = false, shooting = false;
 let firePressed = false;
 
-// --- PC Controls ---
-function enablePCControls() {
-  document.addEventListener('keydown', e => {
-    if (e.key === 'ArrowLeft' || e.key === 'a') left = true;
-    if (e.key === 'ArrowRight' || e.key === 'd') right = true;
-    if ((e.key === ' ' || e.key === 'z' || e.key === 'j') && !firePressed) {
-      shooting = true;
-      firePressed = true;
-    }
-    if (e.key.toLowerCase() === 'p') togglePause();
-  });
-  document.addEventListener('keyup', e => {
-    if (e.key === 'ArrowLeft' || e.key === 'a') left = false;
-    if (e.key === 'ArrowRight' || e.key === 'd') right = false;
-    if (e.key === ' ' || e.key === 'z' || e.key === 'j') {
-      shooting = false;
-      firePressed = false;
-    }
-  });
-}
-
-// --- Touch Controls ---
-function enableTouchControls() {
-  // Ensure touch controls exist
-  const container = document.getElementById('touch-controls');
-  if (!container) return;
-
-  // Fire button events
-  const fireBtn = container.querySelector('.touch-btn.fire');
-  fireBtn.addEventListener('touchstart', e => {
-    e.preventDefault();
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') left = true;
+  if (e.key === 'ArrowRight' || e.key === 'd') right = true;
+  if ((e.key === ' ' || e.key === 'z' || e.key === 'j') && !firePressed) {
     shooting = true;
     firePressed = true;
-  });
-  fireBtn.addEventListener('touchend', e => {
-    e.preventDefault();
+  }
+  if (e.key.toLowerCase() === 'p') togglePause();
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd') right = false;
+  if (e.key === ' ' || e.key === 'z' || e.key === 'j') {
     shooting = false;
     firePressed = false;
-  });
-
-  // Move area events
-  const moveArea = container.querySelector('.touch-btn.move');
-  let moveTouchId = null;
-  moveArea.addEventListener('touchstart', function(e) {
-    if (e.touches.length === 1) {
-      moveTouchId = e.touches[0].identifier;
-      const x = e.touches[0].clientX;
-      const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
-      if (x < mid) {
-        left = true; right = false;
-      } else {
-        right = true; left = false;
-      }
-    }
-  });
-  moveArea.addEventListener('touchmove', function(e) {
-    for (let i = 0; i < e.touches.length; i++) {
-      const touch = e.touches[i];
-      if (moveTouchId !== null && touch.identifier === moveTouchId) {
-        const x = touch.clientX;
-        const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
-        if (x < mid) {
-          left = true; right = false;
-        } else {
-          right = true; left = false;
-        }
-      }
-    }
-  });
-  moveArea.addEventListener('touchend', function(e) {
-    left = false; right = false; moveTouchId = null;
-  });
-}
-
-// --- Device/Mode Detection ---
-function isTouchOnly() {
-  // Detect if touch controls should be enabled (coarse pointer or maxTouchPoints)
-  return (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
-}
-
-function configureControls() {
-  if (isTouchOnly()) {
-    enableTouchControls();
-    document.getElementById('touch-controls').style.display = 'flex';
-    document.body.style.overflowY = 'auto'; // allow scroll if needed
-  } else {
-    enablePCControls();
-    document.getElementById('touch-controls').style.display = 'none';
-    document.body.style.overflowY = 'hidden'; // prevent scroll on desktop
   }
-}
-configureControls();
-window.addEventListener('resize', configureControls);
-window.addEventListener('orientationchange', configureControls);
+});
 
 function resetBunkers() {
   bunkers = buildBunkers();
@@ -679,3 +602,71 @@ window.addEventListener('keydown', function(e) {
 });
 canvas.addEventListener('mousedown', manualRestart);
 canvas.addEventListener('touchstart', manualRestart);
+
+// --- Touch Controls Setup ---
+function enableTouchControls() {
+  const container = document.getElementById('touch-controls');
+  if (!container) return;
+
+  const fireBtn = container.querySelector('.touch-btn.fire');
+  fireBtn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    shooting = true;
+    firePressed = true;
+  });
+  fireBtn.addEventListener('touchend', e => {
+    e.preventDefault();
+    shooting = false;
+    firePressed = false;
+  });
+
+  const moveArea = container.querySelector('.touch-btn.move');
+  let moveTouchId = null;
+  moveArea.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) {
+      moveTouchId = e.touches[0].identifier;
+      const x = e.touches[0].clientX;
+      const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
+      if (x < mid) {
+        left = true; right = false;
+      } else {
+        right = true; left = false;
+      }
+    }
+  });
+  moveArea.addEventListener('touchmove', function(e) {
+    for (let i = 0; i < e.touches.length; i++) {
+      const touch = e.touches[i];
+      if (moveTouchId !== null && touch.identifier === moveTouchId) {
+        const x = touch.clientX;
+        const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
+        if (x < mid) {
+          left = true; right = false;
+        } else {
+          right = true; left = false;
+        }
+      }
+    }
+  });
+  moveArea.addEventListener('touchend', function(e) {
+    left = false; right = false; moveTouchId = null;
+  });
+}
+
+function isTouchOnly() {
+  return (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
+}
+
+function configureControls() {
+  if (isTouchOnly()) {
+    enableTouchControls();
+    document.getElementById('touch-controls').style.display = 'flex';
+    document.body.style.overflowY = 'auto';
+  } else {
+    document.getElementById('touch-controls').style.display = 'none';
+    document.body.style.overflowY = 'hidden';
+  }
+}
+configureControls();
+window.addEventListener('resize', configureControls);
+window.addEventListener('orientationchange', configureControls);
