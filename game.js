@@ -115,6 +115,12 @@ gameOverSound2.preload = 'auto';
 gameOverSound2.volume = 1;
 gameOverSound2.loop = false;
 
+// UFO bomb drop sound
+const ufoBombSound = new Audio('ufobomb1.mp3');
+ufoBombSound.preload = 'auto';
+ufoBombSound.volume = 1;
+ufoBombSound.loop = false;
+
 function playRandomFireSound() {
   if (gameSoundsMuted) return;
   const idx = Math.floor(Math.random() * fireSounds.length);
@@ -163,6 +169,13 @@ function playGameOverSounds() {
     gameOverSound2.play();
   } catch (e) {}
 }
+function playUfoBombSound() {
+  if (gameSoundsMuted) return;
+  try {
+    ufoBombSound.currentTime = 0;
+    ufoBombSound.play();
+  } catch (e) {}
+}
 
 function updateGameSoundMute() {
   const v = gameSoundsMuted ? 0 : 1;
@@ -175,6 +188,7 @@ function updateGameSoundMute() {
   lifeLost2Sound.volume = v;
   gameOverSound1.volume = v;
   gameOverSound2.volume = v;
+  ufoBombSound.volume = v;
 }
 
 // Focus helper to prevent button spacebar bug
@@ -305,6 +319,7 @@ function resetGame() {
   bombDropSpeed = 0.33;
   bulletTravelSpeed = 0.33;
   ufoSlowFactor = 0.33;
+  ufoBombDropChance = 0.05; // Reset UFO bomb drop chance for new game
   spawnInvaderGrid();
   resetBunkers();
   updateHUD();
@@ -316,6 +331,14 @@ let gameOverState = false;
 
 // --- For UFO near-miss ---
 let lastBonusMissFrame = -1000;
+
+// UFO bomb drop chance (increases per level)
+let ufoBombDropChance = 0.05;
+
+// Increase UFO bomb drop chance each level
+function advanceLevel() {
+  ufoBombDropChance += 0.05;
+}
 
 function loseLifeOrGameOver() {
   playerLives--;
@@ -409,11 +432,19 @@ function maybeSpawnBonusEmoji() {
 
 function updateBonusEmoji() {
   if (!bonusEmoji) return;
+
   bonusEmoji.progress += bonusEmoji.speed;
   if (bonusEmoji.progress >= 1) {
     bonusEmoji.x += bonusEmoji.dir;
     bonusEmoji.progress = 0;
   }
+
+  // UFO bomb drop logic
+  if (Math.random() < ufoBombDropChance) {
+    bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 });
+    playUfoBombSound();
+  }
+
   if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) {
     try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
     bonusEmoji = null;
@@ -474,13 +505,11 @@ function drawBonusScore() {
 // UFO Near Miss Logic
 function checkUfoNearMiss() {
   if (!bonusEmoji) return;
-  // If a bullet is within 1.5 cells horizontally and y-aligned (but not a hit) and passes within the last 2 frames
   let nearMiss = bullets.some(b =>
     Math.abs(b.x - bonusEmoji.x) < 1.5 &&
     Math.abs(b.y - bonusEmoji.y) < 0.6 &&
     !(Math.abs(b.x - bonusEmoji.x) < 0.5 && Math.abs(b.y - bonusEmoji.y) < 0.5)
   );
-  // Only trigger once every 500ms
   if (nearMiss && Date.now() - lastBonusMissFrame > 500) {
     playRandomUfoMissSound();
     lastBonusMissFrame = Date.now();
@@ -491,7 +520,6 @@ function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // --- SPEED UP INVADERS IF ANY ARE 5 CELLS FROM THE BOTTOM ---
   let effectiveInvaderSpeed = invaderSpeed;
   let invaderNearBottom = invaders.some(inv => inv.y >= tileCount - 5);
   if (invaderNearBottom) {
@@ -551,7 +579,6 @@ function gameLoop() {
   });
   bombs = bombs.filter(b => b.y < tileCount);
 
-  // --------- USE effectiveInvaderSpeed for this frame ---------
   invaderTick++;
   if (invaderTick >= effectiveInvaderSpeed) {
     let hitEdge = false;
@@ -567,13 +594,11 @@ function gameLoop() {
       for (let i = 0; i < invaders.length; i++) {
         invaders[i].y += 1;
       }
-      // Play invaderdown.mp3 when invaders move down a row
       playInvaderDownSound();
     }
     invaderTick = 0;
   }
 
-  // --- GAME OVER IF INVADER HITS BUNKER ---
   let bunkerRows = new Set();
   for (const bunker of bunkers) {
     for (let row = 0; row < bunker.height; row++) {
@@ -595,7 +620,7 @@ function gameLoop() {
     }
   }
   if (invaderAtBunker) {
-    playGameOverSounds(); // <- Play both gameover.mp3 and gameover2.mp3
+    playGameOverSounds();
     gameOverOverlay.style.display = 'flex';
     isPaused = true;
     gameOverState = true;
@@ -663,7 +688,7 @@ function gameLoop() {
 
   drawEmoji(player.x, player.y, "💩");
   bullets.forEach(b => drawEmoji(b.x, Math.round(b.y), "💥"));
-  bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), "✨", true));
+  bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), b.emoji, true));
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
 
   if (invaders.length === 0) {
@@ -671,6 +696,7 @@ function gameLoop() {
     bombDropSpeed = Math.min(2, bombDropSpeed + 0.2);
     bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
     spawnInvaderGrid();
+    advanceLevel();
   }
 
   updateHUD();
@@ -725,3 +751,71 @@ window.addEventListener('keydown', function(e) {
 });
 canvas.addEventListener('mousedown', manualRestart);
 canvas.addEventListener('touchstart', manualRestart);
+
+// --- Touch Controls Setup ---
+function enableTouchControls() {
+  const container = document.getElementById('touch-controls');
+  if (!container) return;
+
+  const fireBtn = container.querySelector('.touch-btn.fire');
+  fireBtn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    shooting = true;
+    firePressed = true;
+  });
+  fireBtn.addEventListener('touchend', e => {
+    e.preventDefault();
+    shooting = false;
+    firePressed = false;
+  });
+
+  const moveArea = container.querySelector('.touch-btn.move');
+  let moveTouchId = null;
+  moveArea.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) {
+      moveTouchId = e.touches[0].identifier;
+      const x = e.touches[0].clientX;
+      const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
+      if (x < mid) {
+        left = true; right = false;
+      } else {
+        right = true; left = false;
+      }
+    }
+  });
+  moveArea.addEventListener('touchmove', function(e) {
+    for (let i = 0; i < e.touches.length; i++) {
+      const touch = e.touches[i];
+      if (moveTouchId !== null && touch.identifier === moveTouchId) {
+        const x = touch.clientX;
+        const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
+        if (x < mid) {
+          left = true; right = false;
+        } else {
+          right = true; left = false;
+        }
+      }
+    }
+  });
+  moveArea.addEventListener('touchend', function(e) {
+    left = false; right = false; moveTouchId = null;
+  });
+}
+
+function isTouchOnly() {
+  return (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
+}
+
+function configureControls() {
+  if (isTouchOnly()) {
+    enableTouchControls();
+    document.getElementById('touch-controls').style.display = 'flex';
+    document.body.style.overflowY = 'auto';
+  } else {
+    document.getElementById('touch-controls').style.display = 'none';
+    document.body.style.overflowY = 'hidden';
+  }
+}
+configureControls();
+window.addEventListener('resize', configureControls);
+window.addEventListener('orientationchange', configureControls);
