@@ -1,4 +1,5 @@
 // Emoji Invaders Game - UFO speed scales with reward value
+// If player hits any top 25 highest-rewarded UFO, all invaders refresh
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -242,6 +243,13 @@ function handleBulletBonusCollision() {
       bonusTimer = 30;
       bonusEmoji.showScore = pts;
       hit = true;
+
+      // --- NEW LOGIC: If this UFO is in top 25 highest, refresh invaders ---
+      const ufoIdx = emojiBank.indexOf(bonusEmoji.emoji);
+      if (ufoIdx >= emojiBank.length - 25) {
+        spawnInvaderGrid();
+      }
+
       return false;
     }
     return true;
