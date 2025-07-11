@@ -38,6 +38,19 @@
     <button onclick="alert('Login with Wombat')">Wombat</button>
   </div>
 
+  <!-- Touch Controls Overlay: dynamically shown/hidden via CSS for mobile/tablet -->
+  <div id="touch-controls" style="display: none;">
+    <!-- Fire Button (Left) -->
+    <div class="touch-btn fire">
+      🔥 FIRE
+    </div>
+    <!-- Move Area (Right) -->
+    <div class="touch-btn move">
+      <span style="flex:1;text-align:center;font-size:2em;color:#fff;">←</span>
+      <span style="flex:1;text-align:center;font-size:2em;color:#fff;">→</span>
+    </div>
+  </div>
+
   <audio id="radioStream" loop>
     <source src="http://stream.radiojar.com/2qm1fc5kb" type="audio/mpeg">
   </audio>
