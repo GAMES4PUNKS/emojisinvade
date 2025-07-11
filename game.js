@@ -573,6 +573,7 @@ function gameLoop() {
     invaderTick = 0;
   }
 
+  // --- GAME OVER IF INVADER HITS BUNKER ---
   let bunkerRows = new Set();
   for (const bunker of bunkers) {
     for (let row = 0; row < bunker.height; row++) {
@@ -583,17 +584,23 @@ function gameLoop() {
       }
     }
   }
+  let invaderAtBunker = false;
   for (let i = 0; i < invaders.length; i++) {
     if (
       invaders[i].y === player.y ||
       bunkerRows.has(invaders[i].y)
     ) {
-      gameOverOverlay.style.display = 'flex';
-      isPaused = true;
-      gameOverState = true;
-      try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
-      return;
+      invaderAtBunker = true;
+      break;
     }
+  }
+  if (invaderAtBunker) {
+    playGameOverSounds(); // <- Play both gameover.mp3 and gameover2.mp3
+    gameOverOverlay.style.display = 'flex';
+    isPaused = true;
+    gameOverState = true;
+    try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
+    return;
   }
 
   let bulletIndicesToRemove = new Set();
