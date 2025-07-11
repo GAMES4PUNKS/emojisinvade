@@ -105,6 +105,16 @@ lifeLost2Sound.preload = 'auto';
 lifeLost2Sound.volume = 1;
 lifeLost2Sound.loop = false;
 
+const gameOverSound1 = new Audio('gameover.mp3');
+gameOverSound1.preload = 'auto';
+gameOverSound1.volume = 1;
+gameOverSound1.loop = false;
+
+const gameOverSound2 = new Audio('gameover2.mp3');
+gameOverSound2.preload = 'auto';
+gameOverSound2.volume = 1;
+gameOverSound2.loop = false;
+
 function playRandomFireSound() {
   if (gameSoundsMuted) return;
   const idx = Math.floor(Math.random() * fireSounds.length);
@@ -142,6 +152,17 @@ function playLifeLost2Sound() {
     lifeLost2Sound.play();
   } catch (e) {}
 }
+function playGameOverSounds() {
+  if (gameSoundsMuted) return;
+  try {
+    gameOverSound1.currentTime = 0;
+    gameOverSound1.play();
+  } catch (e) {}
+  try {
+    gameOverSound2.currentTime = 0;
+    gameOverSound2.play();
+  } catch (e) {}
+}
 
 function updateGameSoundMute() {
   const v = gameSoundsMuted ? 0 : 1;
@@ -152,6 +173,8 @@ function updateGameSoundMute() {
   ufoMissSounds.forEach(s => s.volume = v);
   lifeLost1Sound.volume = v;
   lifeLost2Sound.volume = v;
+  gameOverSound1.volume = v;
+  gameOverSound2.volume = v;
 }
 
 // Focus helper to prevent button spacebar bug
@@ -299,6 +322,7 @@ function loseLifeOrGameOver() {
   updateHUD();
   if (playerLives <= 0) {
     playLifeLost2Sound();
+    playGameOverSounds();
     gameOverOverlay.style.display = 'flex';
     isPaused = true;
     gameOverState = true;
