@@ -9,7 +9,7 @@ body {
   align-items: center;
   min-height: 100vh;
   height: 100vh;
-  overflow: hidden; /* Prevent scrollbars on desktop */
+  overflow: hidden;
 }
 
 canvas {
@@ -28,7 +28,7 @@ canvas {
   width: 90vmin;
   max-width: 90vw;
   margin-top: 1rem;
-  margin-bottom: 0 !important; /* No gap on desktop */
+  margin-bottom: 0 !important;
 }
 
 #statusBarCombined {
@@ -36,18 +36,17 @@ canvas {
   font-size: 1rem;
   color: white;
   margin-top: 0.5rem;
-  margin-bottom: 0 !important; /* No gap on desktop */
+  margin-bottom: 0 !important;
   justify-content: center;
   align-items: center;
   gap: 0.7em;
   flex-wrap: wrap;
-  font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
 }
 
 #statusBarCombined span,
 #statusBarCombined button,
 #statusBarCombined select {
-  font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
+  font-family: inherit;
 }
 #statusBarCombined button,
 #statusBarCombined select {
@@ -76,7 +75,6 @@ canvas {
   border-radius: 1rem;
   display: none;
   z-index: 100;
-  font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
   text-align: center;
 }
 #loginPopup {
@@ -93,7 +91,6 @@ canvas {
   color: white;
   min-width: 250px;
   text-align: center;
-  font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
 }
 #loginPopup button {
   margin: 0.5rem;
@@ -104,7 +101,6 @@ canvas {
   background: #333;
   color: white;
   cursor: pointer;
-  font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
 }
 #closeLoginPopup {
   position: absolute;
@@ -115,12 +111,11 @@ canvas {
   cursor: pointer;
 }
 
-/* Touch Controls Overlay - initially hidden for desktop */
+/* Touch Controls Overlay - hidden by default */
 #touch-controls {
-  display: none; /* only shown on touch devices via JS or media query */
+  display: none;
 }
 
-/* On touch devices, show touch controls and pad out bottom so no overlap */
 @media (pointer: coarse), (max-width: 900px) {
   #touch-controls {
     position: fixed;
@@ -131,9 +126,6 @@ canvas {
     display: flex;
     z-index: 99;
     pointer-events: auto;
-  }
-  #touch-controls > div {
-    user-select: none;
   }
   #touch-controls .touch-btn {
     font-size: 1.3em;
@@ -154,23 +146,19 @@ canvas {
     background: rgba(30,40,200,0.7);
     border-radius: 1em 0 0 1em;
   }
-
-  /* Add bottom margin so canvas/statusBar never overlap touch controls */
   #game-container {
     margin-bottom: 14vh !important;
   }
   #statusBarCombined {
     margin-bottom: 12vh !important;
   }
-
   body {
-    overflow-y: auto; /* allow scrolling if needed on small screens */
+    overflow-y: auto;
     height: auto;
     min-height: 100vh;
   }
 }
 
-/* Prevent double scrollbars on very small screens */
 @media (max-width: 600px) {
   #touch-controls {
     height: 10vh;
