@@ -1,4 +1,4 @@
-// Emoji Invaders Game - Split UFOs into two groups with weighted spawn rates
+// Emoji Invaders Game - UFO speed scales with reward value
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -190,31 +190,35 @@ let bonusTimer = 0;
 let bonusSpeedupHits = 0;
 let firstBonusSpawned = false;
 
-// Get random UFO emoji with weighted spawn rates
+// UFO weighted random selection
 function getRandomUFOEmoji() {
   // Group 1: 75% more likely than group 2
-  // Weight: group1 = 1.75, group2 = 1
   const totalWeight = 1.75 + 1;
   const rand = Math.random();
   if (rand < 1.75 / totalWeight) {
-    // Pick random from group 1
     const idx = Math.floor(Math.random() * group1.length);
     return group1[idx];
   } else {
-    // Pick random from group 2
     const idx = Math.floor(Math.random() * group2.length);
     return group2[idx];
   }
+}
+
+// UFO speed scales linearly with reward (index in emojiBank)
+function getUfoSpeed(emoji) {
+  const maxSpeed = 0.15 * ufoSlowFactor; // Highest reward UFO speed
+  const minSpeed = 0.05 * ufoSlowFactor; // Lowest reward UFO speed
+  const idx = emojiBank.indexOf(emoji);
+  if (idx === emojiBank.length - 1) return maxSpeed;
+  return minSpeed + ((maxSpeed - minSpeed) * idx / (emojiBank.length - 1));
 }
 
 function maybeSpawnBonusEmoji() {
   if (bonusEmoji !== null) return;
   if (Math.random() < 1/240) {
     const fromLeft = Math.random() < 0.5;
-    const emoji = getRandomUFOEmoji(); // <--- weighted UFO spawn!
-    let speed;
-    if (!firstBonusSpawned) { speed = 0.05 * ufoSlowFactor; firstBonusSpawned = true; }
-    else { speed = 0.15 * ufoSlowFactor; if (bonusSpeedupHits > 5) speed = 0.15 * Math.pow(1.1, bonusSpeedupHits - 5) * ufoSlowFactor; }
+    const emoji = getRandomUFOEmoji();
+    const speed = getUfoSpeed(emoji);
     bonusEmoji = { emoji, x: fromLeft ? 0 : tileCount - 1, y: 0, dir: fromLeft ? 1 : -1, speed: speed, progress: 0, bankIndex: emojiBank.indexOf(emoji) };
     try { if (!gameSoundsMuted) { ufoSound.currentTime = 0; ufoSound.play(); } } catch (e) {}
   }
