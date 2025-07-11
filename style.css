@@ -9,21 +9,21 @@ body {
   align-items: center;
   min-height: 100vh;
 }
-canvas {
+
+/* Add bottom margin so canvas/buttons never overlap touch controls */
+#game-container {
+  position: relative;
   width: 90vmin;
-  height: 90vmin;
   max-width: 90vw;
-  max-height: 90vw;
-  background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
-  box-shadow: 0 0 20px #a020f0;
   margin-top: 1rem;
-  display: block;
+  margin-bottom: 4vh; /* space for touch controls */
 }
 #statusBarCombined {
   display: flex;
   font-size: 1rem;
   color: white;
   margin-top: 0.5rem;
+  margin-bottom: 3vh; /* space for touch controls */
   justify-content: center;
   align-items: center;
   gap: 0.7em;
@@ -50,6 +50,16 @@ canvas {
   overflow: hidden;
   clip: rect(1px, 1px, 1px, 1px);
 }
+canvas {
+  width: 90vmin;
+  height: 90vmin;
+  max-width: 90vw;
+  max-height: 90vw;
+  background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
+  box-shadow: 0 0 20px #a020f0;
+  margin-top: 1rem;
+  display: block;
+}
 #overlay, #gameOverOverlay {
   position: absolute;
   top: 50%;
@@ -61,16 +71,9 @@ canvas {
   padding: 2rem 3rem;
   border-radius: 1rem;
   display: none;
-  z-index: 10;
+  z-index: 100;
   font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
   text-align: center;
-}
-#game-container {
-  position: relative;
-  width: 90vmin;
-  max-width: 90vw;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
 }
 #loginPopup {
   display: none;
@@ -82,7 +85,7 @@ canvas {
   border: 1px solid #888;
   padding: 1rem;
   border-radius: 10px;
-  z-index: 20;
+  z-index: 200;
   color: white;
   min-width: 250px;
   text-align: center;
@@ -114,7 +117,7 @@ canvas {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 18vh; /* 50% less depth than 36vh */
+  height: 14vh;
   display: flex;
   z-index: 99;
   pointer-events: auto;
@@ -145,10 +148,16 @@ canvas {
 /* Responsive adjustments for smaller screens */
 @media (max-width: 600px) {
   #touch-controls {
-    height: 12vh; /* Even less depth for very small screens */
+    height: 10vh; /* Even less depth for very small screens */
   }
   #touch-controls .touch-btn {
-    font-size: 1.3em;
+    font-size: 1.2em;
     padding: 0 0.5vw;
+  }
+  #game-container {
+    margin-bottom: 8vh;
+  }
+  #statusBarCombined {
+    margin-bottom: 6vh;
   }
 }
