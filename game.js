@@ -71,7 +71,8 @@ const fireSounds = [
   new Audio('fire.mp3'),
   new Audio('fire2.mp3'),
   new Audio('fire3.mp3'),
-  new Audio('fire4.mp3')
+  new Audio('fire4.mp3'),
+  new Audio('fire5.mp3')
 ];
 for (let fs of fireSounds) {
   fs.preload = 'auto';
@@ -114,6 +115,12 @@ const gameOverSound2 = new Audio('gameover2.mp3');
 gameOverSound2.preload = 'auto';
 gameOverSound2.volume = 1;
 gameOverSound2.loop = false;
+
+// UFO bomb drop sound
+const ufoBombSound = new Audio('ufobomb1.mp3');
+ufoBombSound.preload = 'auto';
+ufoBombSound.volume = 1;
+ufoBombSound.loop = false;
 
 function playRandomFireSound() {
   if (gameSoundsMuted) return;
@@ -163,6 +170,13 @@ function playGameOverSounds() {
     gameOverSound2.play();
   } catch (e) {}
 }
+function playUfoBombSound() {
+  if (gameSoundsMuted) return;
+  try {
+    ufoBombSound.currentTime = 0;
+    ufoBombSound.play();
+  } catch (e) {}
+}
 
 function updateGameSoundMute() {
   const v = gameSoundsMuted ? 0 : 1;
@@ -175,6 +189,7 @@ function updateGameSoundMute() {
   lifeLost2Sound.volume = v;
   gameOverSound1.volume = v;
   gameOverSound2.volume = v;
+  ufoBombSound.volume = v;
 }
 
 // Focus helper to prevent button spacebar bug
@@ -198,8 +213,17 @@ function getBunkerXs() {
   ];
 }
 const BUNKER_W = 3, BUNKER_H = 3;
+
+// --- Bunker HP logic ---
+let bunkerLevel = 0; // Tracks current level for HP logic
+function getBunkerCellHp() {
+  return Math.max(1, 5 - bunkerLevel * 0.05);
+}
 function makeCells() {
-  return Array.from({length: BUNKER_H}, () => Array(BUNKER_W).fill(true));
+  // Each cell is an object: { hp: getBunkerCellHp() }
+  return Array.from({length: BUNKER_H}, () =>
+    Array.from({length: BUNKER_W}, () => ({ hp: getBunkerCellHp() }))
+  );
 }
 function buildBunkers() {
   const y = getBunkerY();
@@ -215,25 +239,20 @@ let bunkers = buildBunkers();
 function drawBunker(bunker) {
   for (let row = 0; row < bunker.height; row++) {
     for (let col = 0; col < bunker.width; col++) {
-      if (bunker.cells[row][col]) {
+      const cell = bunker.cells[row][col];
+      if (cell && cell.hp > 0) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0.25, cell.hp / getBunkerCellHp());
         ctx.drawImage(
           shitImg,
           (bunker.x + col) * gridSize,
           (bunker.y + row) * gridSize,
           gridSize, gridSize
         );
+        ctx.restore();
       }
     }
   }
-}
-
-function drawEmoji(x, y, emoji, flicker = false, customSize = null, phase = 0) {
-  ctx.font = (customSize ? customSize : gridSize) + "px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif";
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  if (flicker) ctx.globalAlpha = Math.abs(Math.sin(Date.now() / 150 + phase));
-  ctx.fillText(emoji, x * gridSize + gridSize / 2, y * gridSize + gridSize / 2);
-  ctx.globalAlpha = 1;
 }
 
 function updateHUD() {
@@ -305,8 +324,10 @@ function resetGame() {
   bombDropSpeed = 0.33;
   bulletTravelSpeed = 0.33;
   ufoSlowFactor = 0.33;
-  spawnInvaderGrid();
+  ufoBombDropChance = 0.0125;
+  bunkerLevel = 0;
   resetBunkers();
+  spawnInvaderGrid();
   updateHUD();
 }
 
@@ -316,6 +337,16 @@ let gameOverState = false;
 
 // --- For UFO near-miss ---
 let lastBonusMissFrame = -1000;
+
+// UFO bomb drop chance (increases per level)
+let ufoBombDropChance = 0.0125;
+
+// --- Bunker HP decrease per level (becomes easier to destroy)
+function advanceLevel() {
+  ufoBombDropChance += 0.0125;
+  bunkerLevel++;
+  resetBunkers();
+}
 
 function loseLifeOrGameOver() {
   playerLives--;
@@ -409,11 +440,18 @@ function maybeSpawnBonusEmoji() {
 
 function updateBonusEmoji() {
   if (!bonusEmoji) return;
+
   bonusEmoji.progress += bonusEmoji.speed;
   if (bonusEmoji.progress >= 1) {
     bonusEmoji.x += bonusEmoji.dir;
     bonusEmoji.progress = 0;
   }
+
+  if (Math.random() < ufoBombDropChance) {
+    bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 });
+    playUfoBombSound();
+  }
+
   if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) {
     try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
     bonusEmoji = null;
@@ -474,13 +512,11 @@ function drawBonusScore() {
 // UFO Near Miss Logic
 function checkUfoNearMiss() {
   if (!bonusEmoji) return;
-  // If a bullet is within 1.5 cells horizontally and y-aligned (but not a hit) and passes within the last 2 frames
   let nearMiss = bullets.some(b =>
     Math.abs(b.x - bonusEmoji.x) < 1.5 &&
     Math.abs(b.y - bonusEmoji.y) < 0.6 &&
     !(Math.abs(b.x - bonusEmoji.x) < 0.5 && Math.abs(b.y - bonusEmoji.y) < 0.5)
   );
-  // Only trigger once every 500ms
   if (nearMiss && Date.now() - lastBonusMissFrame > 500) {
     playRandomUfoMissSound();
     lastBonusMissFrame = Date.now();
@@ -491,7 +527,6 @@ function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // --- SPEED UP INVADERS IF ANY ARE 5 CELLS FROM THE BOTTOM ---
   let effectiveInvaderSpeed = invaderSpeed;
   let invaderNearBottom = invaders.some(inv => inv.y >= tileCount - 5);
   if (invaderNearBottom) {
@@ -513,17 +548,19 @@ function gameLoop() {
     shooting = false;
   }
 
+  // Bullets damage bunker cell
   let bulletsAfter = [];
   for (let b of bullets) {
     let hit = false;
     for (const bunker of bunkers) {
       for (let row = 0; row < bunker.height; row++) {
         for (let col = 0; col < bunker.width; col++) {
+          const cell = bunker.cells[row][col];
           if (
-            bunker.cells[row][col] &&
+            cell && cell.hp > 0 &&
             Math.round(b.x) === bunker.x + col && Math.round(b.y) === bunker.y + row
           ) {
-            bunker.cells[row][col] = false;
+            cell.hp--;
             hit = true;
           }
         }
@@ -533,25 +570,34 @@ function gameLoop() {
   }
   bullets = bulletsAfter;
 
-  bullets.forEach(b => {
-    b.vy = (b.vy || 0) + bulletTravelSpeed;
-    if (b.vy >= 1) {
-      b.y -= Math.floor(b.vy);
-      b.vy = b.vy % 1;
+  // Bombs damage bunker cell
+  let bombsAfter = [];
+  for (let b of bombs) {
+    let hit = false;
+    for (const bunker of bunkers) {
+      for (let row = 0; row < bunker.height; row++) {
+        for (let col = 0; col < bunker.width; col++) {
+          const cell = bunker.cells[row][col];
+          if (
+            cell && cell.hp > 0 &&
+            b.x === bunker.x + col && Math.round(b.y) === bunker.y + row
+          ) {
+            cell.hp--;
+            hit = true;
+          }
+        }
+      }
     }
-  });
-  bullets = bullets.filter(b => b.y >= 0);
-
-  bombs.forEach(b => {
-    b.vy = (b.vy || 0) + bombDropSpeed;
-    if (b.vy >= 1) {
-      b.y += Math.floor(b.vy);
-      b.vy = b.vy % 1;
+    if (hit) continue;
+    if (b.x === player.x && Math.round(b.y) === player.y) {
+      loseLifeOrGameOver();
+      try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
+      return;
     }
-  });
-  bombs = bombs.filter(b => b.y < tileCount);
+    bombsAfter.push(b);
+  }
+  bombs = bombsAfter;
 
-  // --------- USE effectiveInvaderSpeed for this frame ---------
   invaderTick++;
   if (invaderTick >= effectiveInvaderSpeed) {
     let hitEdge = false;
@@ -567,18 +613,18 @@ function gameLoop() {
       for (let i = 0; i < invaders.length; i++) {
         invaders[i].y += 1;
       }
-      // Play invaderdown.mp3 when invaders move down a row
       playInvaderDownSound();
     }
     invaderTick = 0;
   }
 
-  // --- GAME OVER IF INVADER HITS BUNKER ---
+  // Invader damages bunker cell if collides
   let bunkerRows = new Set();
   for (const bunker of bunkers) {
     for (let row = 0; row < bunker.height; row++) {
       for (let col = 0; col < bunker.width; col++) {
-        if (bunker.cells[row][col]) {
+        const cell = bunker.cells[row][col];
+        if (cell && cell.hp > 0) {
           bunkerRows.add(bunker.y + row);
         }
       }
@@ -590,12 +636,23 @@ function gameLoop() {
       invaders[i].y === player.y ||
       bunkerRows.has(invaders[i].y)
     ) {
+      // If invader is at bunker row, damage all bunker cells in that row (requires n hits to destroy each)
+      for (const bunker of bunkers) {
+        for (let row = 0; row < bunker.height; row++) {
+          if (bunker.y + row === invaders[i].y) {
+            for (let col = 0; col < bunker.width; col++) {
+              const cell = bunker.cells[row][col];
+              if (cell && cell.hp > 0) cell.hp--;
+            }
+          }
+        }
+      }
       invaderAtBunker = true;
       break;
     }
   }
   if (invaderAtBunker) {
-    playGameOverSounds(); // <- Play both gameover.mp3 and gameover2.mp3
+    playGameOverSounds();
     gameOverOverlay.style.display = 'flex';
     isPaused = true;
     gameOverState = true;
@@ -628,32 +685,6 @@ function gameLoop() {
     return true;
   });
 
-  let bombsAfter = [];
-  for (let b of bombs) {
-    let hit = false;
-    for (const bunker of bunkers) {
-      for (let row = 0; row < bunker.height; row++) {
-        for (let col = 0; col < bunker.width; col++) {
-          if (
-            bunker.cells[row][col] &&
-            b.x === bunker.x + col && Math.round(b.y) === bunker.y + row
-          ) {
-            bunker.cells[row][col] = false;
-            hit = true;
-          }
-        }
-      }
-    }
-    if (hit) continue;
-    if (b.x === player.x && Math.round(b.y) === player.y) {
-      loseLifeOrGameOver();
-      try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
-      return;
-    }
-    bombsAfter.push(b);
-  }
-  bombs = bombsAfter;
-
   maybeSpawnBonusEmoji();
   updateBonusEmoji();
   drawBonusEmoji();
@@ -663,7 +694,7 @@ function gameLoop() {
 
   drawEmoji(player.x, player.y, "💩");
   bullets.forEach(b => drawEmoji(b.x, Math.round(b.y), "💥"));
-  bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), "✨", true));
+  bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), b.emoji, true));
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
 
   if (invaders.length === 0) {
@@ -671,6 +702,7 @@ function gameLoop() {
     bombDropSpeed = Math.min(2, bombDropSpeed + 0.2);
     bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
     spawnInvaderGrid();
+    advanceLevel(); // HP decrease logic is applied here
   }
 
   updateHUD();
@@ -725,3 +757,71 @@ window.addEventListener('keydown', function(e) {
 });
 canvas.addEventListener('mousedown', manualRestart);
 canvas.addEventListener('touchstart', manualRestart);
+
+// --- Touch Controls Setup ---
+function enableTouchControls() {
+  const container = document.getElementById('touch-controls');
+  if (!container) return;
+
+  const fireBtn = container.querySelector('.touch-btn.fire');
+  fireBtn.addEventListener('touchstart', e => {
+    e.preventDefault();
+    shooting = true;
+    firePressed = true;
+  });
+  fireBtn.addEventListener('touchend', e => {
+    e.preventDefault();
+    shooting = false;
+    firePressed = false;
+  });
+
+  const moveArea = container.querySelector('.touch-btn.move');
+  let moveTouchId = null;
+  moveArea.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) {
+      moveTouchId = e.touches[0].identifier;
+      const x = e.touches[0].clientX;
+      const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
+      if (x < mid) {
+        left = true; right = false;
+      } else {
+        right = true; left = false;
+      }
+    }
+  });
+  moveArea.addEventListener('touchmove', function(e) {
+    for (let i = 0; i < e.touches.length; i++) {
+      const touch = e.touches[i];
+      if (moveTouchId !== null && touch.identifier === moveTouchId) {
+        const x = touch.clientX;
+        const mid = moveArea.getBoundingClientRect().left + moveArea.offsetWidth / 2;
+        if (x < mid) {
+          left = true; right = false;
+        } else {
+          right = true; left = false;
+        }
+      }
+    }
+  });
+  moveArea.addEventListener('touchend', function(e) {
+    left = false; right = false; moveTouchId = null;
+  });
+}
+
+function isTouchOnly() {
+  return (window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
+}
+
+function configureControls() {
+  if (isTouchOnly()) {
+    enableTouchControls();
+    document.getElementById('touch-controls').style.display = 'flex';
+    document.body.style.overflowY = 'auto';
+  } else {
+    document.getElementById('touch-controls').style.display = 'none';
+    document.body.style.overflowY = 'hidden';
+  }
+}
+configureControls();
+window.addEventListener('resize', configureControls);
+window.addEventListener('orientationchange', configureControls);
