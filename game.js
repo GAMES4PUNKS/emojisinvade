@@ -71,7 +71,8 @@ const fireSounds = [
   new Audio('fire.mp3'),
   new Audio('fire2.mp3'),
   new Audio('fire3.mp3'),
-  new Audio('fire4.mp3')
+  new Audio('fire4.mp3'),
+  new Audio('fire5.mp3') // Added fire5.mp3 as requested
 ];
 for (let fs of fireSounds) {
   fs.preload = 'auto';
