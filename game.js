@@ -1,5 +1,6 @@
 // Emoji Invaders Game - UFO speed scales with reward value
 // If player hits any top 25 highest-rewarded UFO, all invaders refresh
+// Radio and Login buttons now work!
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -244,7 +245,7 @@ function handleBulletBonusCollision() {
       bonusEmoji.showScore = pts;
       hit = true;
 
-      // --- NEW LOGIC: If this UFO is in top 25 highest, refresh invaders ---
+      // If this UFO is in top 25 highest, refresh invaders
       const ufoIdx = emojiBank.indexOf(bonusEmoji.emoji);
       if (ufoIdx >= emojiBank.length - 25) {
         spawnInvaderGrid();
@@ -506,7 +507,34 @@ function togglePause() {
 updateHUD();
 gameLoop();
 
-// UI buttons
+// --- RADIO BUTTON ---
+const radioBtn = document.getElementById('toggleRadio');
+const radioAudio = document.getElementById('radioStream');
+radioBtn.onclick = function() {
+  if (radioAudio.paused) {
+    radioAudio.play();
+    radioBtn.textContent = "Radio ON";
+  } else {
+    radioAudio.pause();
+    radioBtn.textContent = "Radio OFF";
+  }
+  canvas.focus();
+};
+
+// --- LOGIN BUTTON ---
+const loginBtn = document.getElementById('loginBtn');
+const loginPopup = document.getElementById('loginPopup');
+const closeLoginPopup = document.getElementById('closeLoginPopup');
+loginBtn.onclick = function() {
+  loginPopup.style.display = "block";
+  canvas.focus();
+};
+closeLoginPopup.onclick = function() {
+  loginPopup.style.display = "none";
+  canvas.focus();
+};
+
+// --- OTHER UI buttons ---
 document.getElementById("pauseBtn").onclick = () => { togglePause(); canvas.focus(); };
 document.getElementById("muteBtn").onclick = () => { gameSoundsMuted = !gameSoundsMuted; updateGameSoundMute(); document.getElementById("muteBtn").textContent = gameSoundsMuted ? "🔇" : "🔊"; canvas.focus(); };
 document.getElementById("speedSelect").onchange = (e) => { invaderSpeed = Number(e.target.value); canvas.focus(); };
