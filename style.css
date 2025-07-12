@@ -1,48 +1,64 @@
-/* Fullscreen, responsive game canvas and overlays */
-
-html, body {
+body {
   margin: 0;
-  padding: 0;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  background: #111;
-  color: #fff;
-  font-family: 'Orbitron', 'Arial', 'sans-serif';
+  background: url('bgobe.jpg') center center fixed;
+  background-size: cover;
+  font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+#game-container {
+  margin: 2vw auto 0 auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 4px solid #a020f0;
+  border-radius: 1.5vw;
+  background: url('moshed-2021-11-29-0-39-58.gif') center center/cover no-repeat;
+  position: relative;
+  width: 900px;
+  max-width: 92vw;
+  height: 900px;
+  max-height: 92vw;
+  box-shadow: 0 0 60px #a020f0;
 }
 
 #gameCanvas {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100vw;
-  height: 100vw; /* Square aspect, fits smaller of width/height */
-  max-height: 100vh;
-  max-width: 100vh;
-  background: #222;
   display: block;
+  width: 900px !important;
+  height: 900px !important;
+  max-width: 92vw;
+  max-height: 92vw;
+  background: transparent;
+  border-radius: 1vw;
+  margin: 0;
   z-index: 1;
-  box-shadow: 0 0 40px #111;
-  outline: none;
-  touch-action: manipulation;
 }
 
 #overlay, #gameOverOverlay {
   position: absolute;
-  top: 0; left: 0;
-  width: 100vw;
-  height: 100vw;
-  max-width: 100vh;
-  max-height: 100vh;
+  left: 0; top: 0;
+  width: 100%;
+  height: 100%;
   display: none;
   align-items: center;
   justify-content: center;
   text-align: center;
-  background: rgba(16,16,16,0.85);
+  background: rgba(16,16,16,0.78);
   color: #fff;
-  font-size: 2.5vw;
+  font-size: 3vw;
   z-index: 10;
   cursor: pointer;
   user-select: none;
+  font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
   transition: opacity 0.3s;
 }
 
@@ -51,123 +67,98 @@ html, body {
 }
 
 #gameOverOverlay {
-  background: rgba(0,0,0,0.93);
+  background: rgba(80,0,40,0.86);
   color: #ff4444;
   font-size: 3vw;
   font-weight: bold;
 }
 
-#scoreDisplay, #highScoreDisplay, #livesDisplay {
-  position: fixed;
-  left: 20px;
-  top: 10px;
-  font-size: 2vw;
-  z-index: 20;
-  background: rgba(32,32,32,0.7);
-  padding: 0.4em 1em;
-  margin: 0.3em 0.5em 0.3em 0;
-  border-radius: 0.5em;
-  letter-spacing: 1px;
-  box-shadow: 0 0 10px #0006;
-}
-#highScoreDisplay { top: 53px; }
-#livesDisplay { top: 95px; }
-
-#controlsBar {
-  position: fixed;
-  bottom: 0; left: 0;
-  width: 100vw;
+#statusBarCombined {
+  width: 900px;
+  max-width: 92vw;
+  margin: 1vw auto 0 auto;
   display: flex;
-  gap: 0.75em;
+  font-size: 1.2vw;
+  color: white;
   justify-content: center;
   align-items: center;
-  background: rgba(20,20,20,0.88);
-  z-index: 30;
-  padding: 0.6em 0 0.7em 0;
+  gap: 0.7em;
+  flex-wrap: wrap;
+  font-family: 'Orbitron', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI', sans-serif;
+  background: rgba(20,20,40,0.85);
+  border-radius: 0.7vw;
+  box-shadow: 0 0 18px #a020f0;
+  padding: 0.6em 0 0.5em 0;
 }
 
-button, select {
+#statusBarCombined span,
+#statusBarCombined button,
+#statusBarCombined select {
   font-family: inherit;
-  font-size: 1.3vw;
-  background: #333;
-  color: #fff;
-  border: none;
-  border-radius: 0.35em;
-  padding: 0.45em 1.3em;
-  margin: 0 0.2em;
+}
+
+#statusBarCombined button,
+#statusBarCombined select {
+  background: none;
+  color: white;
+  border: 1px solid #a020f0;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
   cursor: pointer;
-  box-shadow: 0 2px 6px #0007;
-  transition: background 0.15s, color 0.15s;
-}
-button:hover, select:hover {
-  background: #444;
-  color: #ffefc0;
 }
 
-#toggleRadio {
-  background: #2a4c6e;
-  color: #d4eaff;
-}
-#toggleRadio:hover {
-  background: #3772a6;
-  color: #fff;
-}
-
-#loginBtn {
-  background: #222;
-  color: #9fd3c7;
-}
-#loginBtn:hover {
-  background: #444;
-  color: #fff;
+.visually-hidden {
+  position: absolute !important;
+  height: 1px; width: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
 }
 
 #loginPopup {
-  position: fixed;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  background: #222;
-  color: #fff;
-  border-radius: 1em;
-  box-shadow: 0 0 24px #000b;
-  padding: 2em 2.5em;
-  z-index: 100;
-  min-width: 280px;
-  max-width: 90vw;
   display: none;
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.95);
+  border: 1px solid #888;
+  padding: 1rem;
+  border-radius: 10px;
+  z-index: 20;
+  color: white;
+  min-width: 250px;
+  text-align: center;
+  font-family: inherit;
 }
+
+#loginPopup button {
+  margin: 0.5rem;
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #333;
+  color: white;
+  cursor: pointer;
+}
+
 #closeLoginPopup {
   position: absolute;
-  top: 0.7em; right: 1em;
-  font-size: 2em;
-  color: #ff4444;
+  top: 5px;
+  right: 10px;
+  font-size: 20px;
+  color: white;
   cursor: pointer;
-  font-weight: bold;
-  z-index: 110;
 }
 
-@media (max-width: 900px) {
-  #scoreDisplay, #highScoreDisplay, #livesDisplay {
-    font-size: 3.2vw;
-    left: 8px;
-    top: 8px;
-    padding: 0.25em 0.7em;
+@media (max-width: 950px) {
+  #game-container, #gameCanvas, #statusBarCombined {
+    width: 98vw;
+    max-width: 98vw;
+    height: 98vw;
+    max-height: 98vw;
+    font-size: 3vw;
   }
-  #highScoreDisplay { top: 35px; }
-  #livesDisplay { top: 62px; }
-  button, select { font-size: 2.1vw; padding: 0.32em 0.7em; }
-  #controlsBar { padding: 0.3em 0 0.5em 0; }
+  #gameCanvas { font-size: 3vw; }
+  #statusBarCombined { font-size: 2.8vw; }
 }
-
-@media (max-width: 600px) {
-  #scoreDisplay, #highScoreDisplay, #livesDisplay {
-    font-size: 4vw;
-    padding: 0.18em 0.5em;
-  }
-  button, select { font-size: 3vw; padding: 0.22em 0.45em; }
-  #controlsBar { padding: 0.22em 0 0.32em 0; }
-  #loginPopup { padding: 1.1em 0.8em; }
-}
-
-/* Hide scrollbars on overlays and canvas */
-::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
