@@ -1,0 +1,173 @@
+/* Fullscreen, responsive game canvas and overlays */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #111;
+  color: #fff;
+  font-family: 'Orbitron', 'Arial', 'sans-serif';
+}
+
+#gameCanvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vw; /* Square aspect, fits smaller of width/height */
+  max-height: 100vh;
+  max-width: 100vh;
+  background: #222;
+  display: block;
+  z-index: 1;
+  box-shadow: 0 0 40px #111;
+  outline: none;
+  touch-action: manipulation;
+}
+
+#overlay, #gameOverOverlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vw;
+  max-width: 100vh;
+  max-height: 100vh;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: rgba(16,16,16,0.85);
+  color: #fff;
+  font-size: 2.5vw;
+  z-index: 10;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.3s;
+}
+
+#overlay[style*="display: block"], #gameOverOverlay[style*="display: flex"] {
+  display: flex !important;
+}
+
+#gameOverOverlay {
+  background: rgba(0,0,0,0.93);
+  color: #ff4444;
+  font-size: 3vw;
+  font-weight: bold;
+}
+
+#scoreDisplay, #highScoreDisplay, #livesDisplay {
+  position: fixed;
+  left: 20px;
+  top: 10px;
+  font-size: 2vw;
+  z-index: 20;
+  background: rgba(32,32,32,0.7);
+  padding: 0.4em 1em;
+  margin: 0.3em 0.5em 0.3em 0;
+  border-radius: 0.5em;
+  letter-spacing: 1px;
+  box-shadow: 0 0 10px #0006;
+}
+#highScoreDisplay { top: 53px; }
+#livesDisplay { top: 95px; }
+
+#controlsBar {
+  position: fixed;
+  bottom: 0; left: 0;
+  width: 100vw;
+  display: flex;
+  gap: 0.75em;
+  justify-content: center;
+  align-items: center;
+  background: rgba(20,20,20,0.88);
+  z-index: 30;
+  padding: 0.6em 0 0.7em 0;
+}
+
+button, select {
+  font-family: inherit;
+  font-size: 1.3vw;
+  background: #333;
+  color: #fff;
+  border: none;
+  border-radius: 0.35em;
+  padding: 0.45em 1.3em;
+  margin: 0 0.2em;
+  cursor: pointer;
+  box-shadow: 0 2px 6px #0007;
+  transition: background 0.15s, color 0.15s;
+}
+button:hover, select:hover {
+  background: #444;
+  color: #ffefc0;
+}
+
+#toggleRadio {
+  background: #2a4c6e;
+  color: #d4eaff;
+}
+#toggleRadio:hover {
+  background: #3772a6;
+  color: #fff;
+}
+
+#loginBtn {
+  background: #222;
+  color: #9fd3c7;
+}
+#loginBtn:hover {
+  background: #444;
+  color: #fff;
+}
+
+#loginPopup {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: #222;
+  color: #fff;
+  border-radius: 1em;
+  box-shadow: 0 0 24px #000b;
+  padding: 2em 2.5em;
+  z-index: 100;
+  min-width: 280px;
+  max-width: 90vw;
+  display: none;
+}
+#closeLoginPopup {
+  position: absolute;
+  top: 0.7em; right: 1em;
+  font-size: 2em;
+  color: #ff4444;
+  cursor: pointer;
+  font-weight: bold;
+  z-index: 110;
+}
+
+@media (max-width: 900px) {
+  #scoreDisplay, #highScoreDisplay, #livesDisplay {
+    font-size: 3.2vw;
+    left: 8px;
+    top: 8px;
+    padding: 0.25em 0.7em;
+  }
+  #highScoreDisplay { top: 35px; }
+  #livesDisplay { top: 62px; }
+  button, select { font-size: 2.1vw; padding: 0.32em 0.7em; }
+  #controlsBar { padding: 0.3em 0 0.5em 0; }
+}
+
+@media (max-width: 600px) {
+  #scoreDisplay, #highScoreDisplay, #livesDisplay {
+    font-size: 4vw;
+    padding: 0.18em 0.5em;
+  }
+  button, select { font-size: 3vw; padding: 0.22em 0.45em; }
+  #controlsBar { padding: 0.22em 0 0.32em 0; }
+  #loginPopup { padding: 1.1em 0.8em; }
+}
+
+/* Hide scrollbars on overlays and canvas */
+::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
