@@ -1,7 +1,5 @@
-// Emoji Invaders Game - UFO speed scales with reward value
-// If player hits any top 25 highest-rewarded UFO, all invaders refresh
-// Radio and Login buttons now work!
-// Game starts ONLY after Play/Pause button is clicked, or PLAY overlay is clicked, or Enter/Space is pressed.
+// Emoji Invaders Game - Fullscreen Responsive Canvas
+// All previous features retained!
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -20,20 +18,37 @@ const emojiBank = [
   "❤️","🧡","💛","💚","💙","💜","🤍","🤎","💔"
 ];
 
-const group1 = emojiBank.slice(0, 54);    // lowest points
-const group2 = emojiBank.slice(54, 108);  // highest points
+const group1 = emojiBank.slice(0, 54);
+const group2 = emojiBank.slice(54, 108);
 
 const emojiBonusScores = {};
 for (let i = 0; i < emojiBank.length; i++)
   emojiBonusScores[emojiBank[i]] = 1000 + i * 50;
 
+// --- Responsive Canvas Sizing ---
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-canvas.width = 400;
-canvas.height = 400;
-const gridSize = 20;
-const tileCount = canvas.width / gridSize;
 
+// Responsive grid: keep tileCount constant, scale gridSize and canvas size
+const tileCount = 20; // keep logic as 20x20 grid
+let gridSize = 20; // will be set dynamically
+
+function resizeCanvas() {
+  // Fit to window, but keep aspect ratio square
+  const minDim = Math.min(window.innerWidth, window.innerHeight);
+  canvas.width = minDim;
+  canvas.height = minDim;
+  gridSize = canvas.width / tileCount;
+  // Resize overlays and popups to fit
+  overlay.style.width = canvas.width + "px";
+  overlay.style.height = canvas.height + "px";
+  gameOverOverlay.style.width = canvas.width + "px";
+  gameOverOverlay.style.height = canvas.height + "px";
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+// --- Game State ---
 let score = 0;
 let highScore = Number(localStorage.getItem("high_score") || 0);
 const player = { x: 10, y: tileCount - 1, speedCounter: 0 };
@@ -82,6 +97,7 @@ function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.cur
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
 function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound].forEach(a => a.volume = v); }
 
+// Bunker logic
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 const BUNKER_W = 3, BUNKER_H = 3;
@@ -137,6 +153,7 @@ function spawnInvaderGrid() {
   }
 }
 
+// Controls
 let left = false, right = false, shooting = false;
 let firePressed = false;
 document.addEventListener('keydown', e => {
@@ -247,7 +264,7 @@ function handleBulletBonusCollision() {
 }
 function drawBonusScore() {
   if (bonusEmoji && bonusEmoji.showScore && bonusTimer > 0) {
-    ctx.font = "bold 16px Arial";
+    ctx.font = "bold " + Math.floor(gridSize*0.8) + "px Arial";
     ctx.fillStyle = "yellow";
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
@@ -508,15 +525,17 @@ canvas.addEventListener('mousedown', manualRestart);
 canvas.addEventListener('touchstart', manualRestart);
 
 // --- GAME START LOGIC ---
-// Only start game after Play/Pause button pressed or PLAY overlay is clicked or Enter/Space is pressed
 let initialGameStarted = false;
 function showStartOverlay() {
   overlay.textContent = "▶ PLAY";
   overlay.style.display = "block";
   overlay.style.cursor = "pointer";
+  overlay.style.fontSize = Math.floor(gridSize*2.5) + "px";
   isPaused = true;
   gameOverState = false;
   if (reqId) cancelAnimationFrame(reqId);
+  overlay.style.left = canvas.offsetLeft + "px";
+  overlay.style.top = canvas.offsetTop + "px";
 }
 function startMainGame() {
   if (!initialGameStarted) {
@@ -552,6 +571,7 @@ window.addEventListener('keydown', function(e) {
   if (gameOverState && (e.key === "Enter" || e.key === " ")) manualRestart();
 });
 window.addEventListener('DOMContentLoaded', () => {
+  resizeCanvas();
   showStartOverlay();
 });
 updateHUD();
