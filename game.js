@@ -1,7 +1,7 @@
 // Emoji Invaders Game - UFO speed scales with reward value
 // If player hits any top 25 highest-rewarded UFO, all invaders refresh
 // Radio and Login buttons now work!
-// Game starts ONLY after Play/Pause button is clicked
+// Game starts ONLY after Play/Pause button is clicked, or PLAY overlay is clicked, or Enter/Space is pressed.
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -20,16 +20,13 @@ const emojiBank = [
   "❤️","🧡","💛","💚","💙","💜","🤍","🤎","💔"
 ];
 
-// Split UFOs into two groups
 const group1 = emojiBank.slice(0, 54);    // lowest points
 const group2 = emojiBank.slice(54, 108);  // highest points
 
-// Emoji bonus scores (each emoji has a unique score)
 const emojiBonusScores = {};
 for (let i = 0; i < emojiBank.length; i++)
   emojiBonusScores[emojiBank[i]] = 1000 + i * 50;
 
-// Canvas setup
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 400;
@@ -37,7 +34,6 @@ canvas.height = 400;
 const gridSize = 20;
 const tileCount = canvas.width / gridSize;
 
-// Game state
 let score = 0;
 let highScore = Number(localStorage.getItem("high_score") || 0);
 const player = { x: 10, y: tileCount - 1, speedCounter: 0 };
@@ -57,7 +53,6 @@ const highScoreDisplay = document.getElementById("highScoreDisplay");
 const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 
-// Sound logic
 let gameSoundsMuted = false;
 const fireSounds = [
   new Audio('fire.mp3'), new Audio('fire2.mp3'), new Audio('fire3.mp3'),
@@ -87,11 +82,10 @@ function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.cur
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
 function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound].forEach(a => a.volume = v); }
 
-// Bunker logic
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 const BUNKER_W = 3, BUNKER_H = 3;
-let bunkerLevel = 0; // Tracks current level for HP logic
+let bunkerLevel = 0;
 function getBunkerCellHp() { return Math.max(1, 5 - bunkerLevel * 0.05); }
 function getBunkerY() { const previousY = tileCount - 5; const bottomY = tileCount - 2; return Math.round(previousY + 0.4 * (bottomY - previousY)); }
 function getBunkerXs() { return [Math.round(tileCount * 1 / 6), Math.round(tileCount * 1 / 2), Math.round(tileCount * 5 / 6)]; }
@@ -112,7 +106,6 @@ function drawBunker(bunker) {
 }
 function resetBunkers() { bunkers = buildBunkers(); }
 
-// HUD
 function updateHUD() {
   scoreDisplay.textContent = `Score: ${score}`;
   highScoreDisplay.textContent = `High Score: ${highScore}`;
@@ -125,7 +118,6 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-// Invader logic
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 10; row++) {
@@ -145,14 +137,13 @@ function spawnInvaderGrid() {
   }
 }
 
-// Controls
 let left = false, right = false, shooting = false;
 let firePressed = false;
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') left = true;
   if (e.key === 'ArrowRight' || e.key === 'd') right = true;
   if ((e.key === ' ' || e.key === 'z' || e.key === 'j') && !firePressed) { shooting = true; firePressed = true; }
-  if (e.key.toLowerCase() === 'p') document.getElementById("pauseBtn").click(); // Use new play/pause logic
+  if (e.key.toLowerCase() === 'p') document.getElementById("pauseBtn").click();
 });
 document.addEventListener('keyup', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') left = false;
@@ -160,7 +151,6 @@ document.addEventListener('keyup', e => {
   if (e.key === ' ' || e.key === 'z' || e.key === 'j') { shooting = false; firePressed = false; }
 });
 
-// Game reset logic
 function resetGame() {
   score = 0;
   bullets = [];
@@ -184,7 +174,6 @@ let isPaused = true; // Start paused until Play is clicked!
 let reqId = null;
 let gameOverState = false;
 
-// UFO Logic
 let lastBonusMissFrame = -1000;
 let ufoBombDropChance = 0.0125;
 let bonusEmoji = null;
@@ -192,9 +181,7 @@ let bonusTimer = 0;
 let bonusSpeedupHits = 0;
 let firstBonusSpawned = false;
 
-// UFO weighted random selection
 function getRandomUFOEmoji() {
-  // Group 1: 75% more likely than group 2
   const totalWeight = 1.75 + 1;
   const rand = Math.random();
   if (rand < 1.75 / totalWeight) {
@@ -206,10 +193,9 @@ function getRandomUFOEmoji() {
   }
 }
 
-// UFO speed scales linearly with reward (index in emojiBank)
 function getUfoSpeed(emoji) {
-  const maxSpeed = 0.15 * ufoSlowFactor; // Highest reward UFO speed
-  const minSpeed = 0.05 * ufoSlowFactor; // Lowest reward UFO speed
+  const maxSpeed = 0.15 * ufoSlowFactor;
+  const minSpeed = 0.05 * ufoSlowFactor;
   const idx = emojiBank.indexOf(emoji);
   if (idx === emojiBank.length - 1) return maxSpeed;
   return minSpeed + ((maxSpeed - minSpeed) * idx / (emojiBank.length - 1));
@@ -244,13 +230,10 @@ function handleBulletBonusCollision() {
       bonusTimer = 30;
       bonusEmoji.showScore = pts;
       hit = true;
-
-      // If this UFO is in top 25 highest, refresh invaders
       const ufoIdx = emojiBank.indexOf(bonusEmoji.emoji);
       if (ufoIdx >= emojiBank.length - 25) {
         spawnInvaderGrid();
       }
-
       return false;
     }
     return true;
@@ -284,7 +267,6 @@ function checkUfoNearMiss() {
   if (nearMiss && Date.now() - lastBonusMissFrame > 500) { playRandomUfoMissSound(); lastBonusMissFrame = Date.now(); }
 }
 
-// Drawing emojis
 function drawEmoji(x, y, emoji, flicker = false, customSize = null, phase = 0) {
   ctx.font = (customSize ? customSize : gridSize) + "px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif";
   ctx.textAlign = 'center';
@@ -294,7 +276,6 @@ function drawEmoji(x, y, emoji, flicker = false, customSize = null, phase = 0) {
   ctx.globalAlpha = 1;
 }
 
-// Main game loop
 function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -350,7 +331,7 @@ function gameLoop() {
         }
     if (hit) continue;
     if (b.x === player.x && Math.round(b.y) === player.y) {
-      loseLifeOrGameOver(true); // true for bomb hit
+      loseLifeOrGameOver(true);
       try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
       return;
     }
@@ -358,13 +339,11 @@ function gameLoop() {
   }
   bombs = bombsAfter;
 
-  // Move bullets/bombs
   bullets.forEach(b => { b.vy = (b.vy || 0) + bulletTravelSpeed; if (b.vy >= 1) { b.y -= Math.floor(b.vy); b.vy = b.vy % 1; } });
   bullets = bullets.filter(b => b.y >= 0);
   bombs.forEach(b => { b.vy = (b.vy || 0) + bombDropSpeed; if (b.vy >= 1) { b.y += Math.floor(b.vy); b.vy = b.vy % 1; } });
   bombs = bombs.filter(b => b.y < tileCount);
 
-  // Invader movement
   invaderTick++;
   if (invaderTick >= effectiveInvaderSpeed) {
     let hitEdge = false;
@@ -377,7 +356,6 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // Invader damages bunker cell if collides
   let bunkerRows = new Set();
   for (const bunker of bunkers)
     for (let row = 0; row < bunker.height; row++)
@@ -407,7 +385,6 @@ function gameLoop() {
     return;
   }
 
-  // Invader/bullet collision
   let bulletIndicesToRemove = new Set(), invaderIndicesToRemove = new Set();
   bullets.forEach((b, bi) => {
     invaders.forEach((inv, ji) => {
@@ -453,18 +430,15 @@ function gameLoop() {
   reqId = requestAnimationFrame(gameLoop);
 }
 
-// Advance level logic (bunker HP gets easier to destroy)
 function advanceLevel() {
   ufoBombDropChance += 0.0125;
   bunkerLevel++;
   resetBunkers();
 }
 
-// Life/game over logic
 function loseLifeOrGameOver(bombHit = false) {
   playerLives--;
   if (bombHit) {
-    // Lose 50% of score if hit by a bomb
     score = Math.floor(score * 0.5);
     updateHUD();
   }
@@ -490,7 +464,6 @@ function loseLifeOrGameOver(bombHit = false) {
   }
 }
 
-// Pause/restart controls
 function manualRestart() {
   if (!gameOverState) return;
   gameOverOverlay.style.display = 'none';
@@ -504,7 +477,6 @@ function togglePause() {
   else if (!gameOverState) { isPaused = true; overlay.textContent = "PAUSED"; overlay.style.display = "block"; if (reqId) cancelAnimationFrame(reqId); }
 }
 
-// --- RADIO BUTTON ---
 const radioBtn = document.getElementById('toggleRadio');
 const radioAudio = document.getElementById('radioStream');
 radioBtn.onclick = function() {
@@ -518,7 +490,6 @@ radioBtn.onclick = function() {
   canvas.focus();
 };
 
-// --- LOGIN BUTTON ---
 const loginBtn = document.getElementById('loginBtn');
 const loginPopup = document.getElementById('loginPopup');
 const closeLoginPopup = document.getElementById('closeLoginPopup');
@@ -531,41 +502,55 @@ closeLoginPopup.onclick = function() {
   canvas.focus();
 };
 
-// --- OTHER UI buttons ---
 document.getElementById("muteBtn").onclick = () => { gameSoundsMuted = !gameSoundsMuted; updateGameSoundMute(); document.getElementById("muteBtn").textContent = gameSoundsMuted ? "🔇" : "🔊"; canvas.focus(); };
 document.getElementById("speedSelect").onchange = (e) => { invaderSpeed = Number(e.target.value); canvas.focus(); };
+canvas.addEventListener('mousedown', manualRestart);
+canvas.addEventListener('touchstart', manualRestart);
+
+// --- GAME START LOGIC ---
+// Only start game after Play/Pause button pressed or PLAY overlay is clicked or Enter/Space is pressed
+let initialGameStarted = false;
+function showStartOverlay() {
+  overlay.textContent = "▶ PLAY";
+  overlay.style.display = "block";
+  overlay.style.cursor = "pointer";
+  isPaused = true;
+  gameOverState = false;
+  if (reqId) cancelAnimationFrame(reqId);
+}
+function startMainGame() {
+  if (!initialGameStarted) {
+    initialGameStarted = true;
+    overlay.style.display = "none";
+    overlay.style.cursor = "";
+    isPaused = false;
+    reqId = requestAnimationFrame(gameLoop);
+    canvas.focus();
+  }
+}
+document.getElementById("pauseBtn").onclick = () => {
+  if (!initialGameStarted) {
+    startMainGame();
+  } else {
+    togglePause();
+    canvas.focus();
+  }
+};
+overlay.onclick = () => {
+  if (!initialGameStarted && overlay.style.display === "block") {
+    startMainGame();
+  }
+};
 window.addEventListener('keydown', function(e) {
+  if (!initialGameStarted && overlay.style.display === "block" && (e.key === "Enter" || e.key === " ")) {
+    startMainGame();
+  }
   if (e.key === "Escape") {
     const popup = document.getElementById("loginPopup");
     if (popup && popup.style.display === "block") { popup.style.display = "none"; canvas.focus(); }
   }
   if (gameOverState && (e.key === "Enter" || e.key === " ")) manualRestart();
 });
-canvas.addEventListener('mousedown', manualRestart);
-canvas.addEventListener('touchstart', manualRestart);
-
-// --- GAME START LOGIC ---
-// Only start game after Play/Pause button pressed
-let initialGameStarted = false;
-function showStartOverlay() {
-  overlay.textContent = "▶ PLAY";
-  overlay.style.display = "block";
-  isPaused = true;
-  gameOverState = false;
-  if (reqId) cancelAnimationFrame(reqId);
-}
-document.getElementById("pauseBtn").onclick = () => {
-  if (!initialGameStarted) {
-    initialGameStarted = true;
-    overlay.style.display = "none";
-    isPaused = false;
-    reqId = requestAnimationFrame(gameLoop);
-    canvas.focus();
-  } else {
-    togglePause();
-    canvas.focus();
-  }
-};
 window.addEventListener('DOMContentLoaded', () => {
   showStartOverlay();
 });
