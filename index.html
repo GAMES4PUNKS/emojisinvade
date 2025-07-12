@@ -14,41 +14,33 @@
     <div id="gameOverOverlay">💀 GAME OVER 💀</div>
   </div>
 
-  <!-- Combined status bar and controls -->
   <div id="statusBarCombined">
     <span id="scoreDisplay">Score: 0</span>
     <span id="highScoreDisplay">High Score: 0</span>
     <span id="livesDisplay"></span>
-    <button id="pauseBtn" title="Pause/Play">⏸️</button>
-    <button id="muteBtn" title="Mute/Unmute sounds">🔊</button>
+    <button id="pauseBtn">⏸️</button>
+    <button id="muteBtn">🔊</button>
     <label for="speedSelect" class="visually-hidden">Game Speed</label>
-    <select id="speedSelect" title="Game Speed">
+    <select id="speedSelect">
       <option value="40">Normal</option>
       <option value="20">Fast</option>
       <option value="10">Turbo</option>
     </select>
-    <button id="toggleRadio" title="Toggle radio music">Radio OFF</button>
-    <button id="loginBtn" title="Log in to WAX wallet">LOG IN</button>
+    <button id="toggleRadio">Radio OFF</button>
+    <button id="loginBtn">LOG IN</button>
   </div>
 
-  <!-- Login popup -->
   <div id="loginPopup">
-    <span id="closeLoginPopup" title="Close login">&times;</span>
+    <span id="closeLoginPopup">&times;</span>
     <p>Select WAX Wallet</p>
     <button onclick="alert('Login with Anchor')">Anchor</button>
     <button onclick="alert('Login with MyCloud')">MyCloud</button>
     <button onclick="alert('Login with Wombat')">Wombat</button>
   </div>
 
-  <!-- Radio audio stream (hidden) -->
   <audio id="radioStream" loop>
     <source src="http://stream.radiojar.com/2qm1fc5kb" type="audio/mpeg">
   </audio>
-
-  <!-- Accessibility: hidden label for speed select -->
-  <label for="speedSelect" class="visually-hidden">Game Speed</label>
-
-  <!-- Scripts -->
   <script src="game.js"></script>
 </body>
 </html>
