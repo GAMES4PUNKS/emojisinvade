@@ -1,6 +1,7 @@
 // Emoji Invaders Game - UFO speed scales with reward value
 // If player hits any top 25 highest-rewarded UFO, all invaders refresh
 // Radio and Login buttons now work!
+// Game starts ONLY after Play/Pause button is clicked
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -143,7 +144,6 @@ function spawnInvaderGrid() {
     }
   }
 }
-spawnInvaderGrid();
 
 // Controls
 let left = false, right = false, shooting = false;
@@ -152,7 +152,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') left = true;
   if (e.key === 'ArrowRight' || e.key === 'd') right = true;
   if ((e.key === ' ' || e.key === 'z' || e.key === 'j') && !firePressed) { shooting = true; firePressed = true; }
-  if (e.key.toLowerCase() === 'p') togglePause();
+  if (e.key.toLowerCase() === 'p') document.getElementById("pauseBtn").click(); // Use new play/pause logic
 });
 document.addEventListener('keyup', e => {
   if (e.key === 'ArrowLeft' || e.key === 'a') left = false;
@@ -180,7 +180,7 @@ function resetGame() {
   updateHUD();
 }
 
-let isPaused = false;
+let isPaused = true; // Start paused until Play is clicked!
 let reqId = null;
 let gameOverState = false;
 
@@ -504,9 +504,6 @@ function togglePause() {
   else if (!gameOverState) { isPaused = true; overlay.textContent = "PAUSED"; overlay.style.display = "block"; if (reqId) cancelAnimationFrame(reqId); }
 }
 
-updateHUD();
-gameLoop();
-
 // --- RADIO BUTTON ---
 const radioBtn = document.getElementById('toggleRadio');
 const radioAudio = document.getElementById('radioStream');
@@ -535,7 +532,6 @@ closeLoginPopup.onclick = function() {
 };
 
 // --- OTHER UI buttons ---
-document.getElementById("pauseBtn").onclick = () => { togglePause(); canvas.focus(); };
 document.getElementById("muteBtn").onclick = () => { gameSoundsMuted = !gameSoundsMuted; updateGameSoundMute(); document.getElementById("muteBtn").textContent = gameSoundsMuted ? "🔇" : "🔊"; canvas.focus(); };
 document.getElementById("speedSelect").onchange = (e) => { invaderSpeed = Number(e.target.value); canvas.focus(); };
 window.addEventListener('keydown', function(e) {
@@ -547,3 +543,31 @@ window.addEventListener('keydown', function(e) {
 });
 canvas.addEventListener('mousedown', manualRestart);
 canvas.addEventListener('touchstart', manualRestart);
+
+// --- GAME START LOGIC ---
+// Only start game after Play/Pause button pressed
+let initialGameStarted = false;
+function showStartOverlay() {
+  overlay.textContent = "▶ PLAY";
+  overlay.style.display = "block";
+  isPaused = true;
+  gameOverState = false;
+  if (reqId) cancelAnimationFrame(reqId);
+}
+document.getElementById("pauseBtn").onclick = () => {
+  if (!initialGameStarted) {
+    initialGameStarted = true;
+    overlay.style.display = "none";
+    isPaused = false;
+    reqId = requestAnimationFrame(gameLoop);
+    canvas.focus();
+  } else {
+    togglePause();
+    canvas.focus();
+  }
+};
+window.addEventListener('DOMContentLoaded', () => {
+  showStartOverlay();
+});
+updateHUD();
+// DO NOT CALL gameLoop() HERE! Game starts after Play button pressed.
