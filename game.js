@@ -1,9 +1,4 @@
-// Emoji Invaders Game - 21 cells wide and 21 cells high, player centered with 20 cells either side
-// UFO speed scales with reward value
-// If player hits any top 25 highest-rewarded UFO, all invaders refresh
-// Radio and Login buttons now work!
-// Game starts ONLY after Play/Pause button is clicked, or PLAY overlay is clicked, or Enter/Space is pressed.
-
+// Emoji Invaders Game - 21x21 grid, invaders grouped with no cell space, 8 rows deep, custom bunkers
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
   "😍","🥰","😘","😗","😙","😚","😐","😑","😶","🙄","😏","😣","😥","😮",
@@ -21,14 +16,7 @@ const emojiBank = [
   "❤️","🧡","💛","💚","💙","💜","🤍","🤎","💔"
 ];
 
-const group1 = emojiBank.slice(0, 54);    // lowest points
-const group2 = emojiBank.slice(54, 108);  // highest points
-
-const emojiBonusScores = {};
-for (let i = 0; i < emojiBank.length; i++)
-  emojiBonusScores[emojiBank[i]] = 1000 + i * 50;
-
-// === GRID SETUP - Now 21 wide and 21 high ===
+// === GRID SETUP - 21x21 ===
 const tileCount = 21;
 const gridSize = 20;
 const canvas = document.getElementById("gameCanvas");
@@ -36,10 +24,9 @@ const ctx = canvas.getContext("2d");
 canvas.width = tileCount * gridSize;
 canvas.height = tileCount * gridSize;
 
-// Center player at cell 10,20 (0-based index, so 10 is exact center for 21 cells wide, 20 is bottom for 21 high)
 let score = 0;
 let highScore = Number(localStorage.getItem("high_score") || 0);
-const player = { x: Math.floor(tileCount / 2), y: tileCount - 1, speedCounter: 0 };  // x:10,y:20 for 21x21 grid
+const player = { x: Math.floor(tileCount / 2), y: tileCount - 1, speedCounter: 0 };
 let playerLives = 3;
 let bullets = [];
 let bombs = [];
@@ -50,71 +37,47 @@ let invaderTick = 0;
 let bulletCooldown = 0;
 let bombDropSpeed = 0.33;
 let bulletTravelSpeed = 0.33;
-let ufoSlowFactor = 0.33;
+
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
 const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 const pauseBtn = document.getElementById("pauseBtn");
-const radioBtn = document.getElementById('toggleRadio');
-const radioAudio = document.getElementById('radioStream');
-const loginBtn = document.getElementById('loginBtn');
-const loginPopup = document.getElementById('loginPopup');
-const closeLoginPopup = document.getElementById('closeLoginPopup');
-const muteBtn = document.getElementById("muteBtn");
-const speedSelect = document.getElementById("speedSelect");
 
-let gameSoundsMuted = false;
-const fireSounds = [
-  new Audio('fire.mp3'), new Audio('fire2.mp3'), new Audio('fire3.mp3'),
-  new Audio('fire4.mp3'), new Audio('fire5.mp3')
-];
-const invaderDownSound = new Audio('invaderdown.mp3');
-const ufoSound = new Audio('ufo.mp3');
-const ufoHitSound = new Audio('ufo2.mp3');
-const ufoMissSounds = [
-  new Audio('ufomiss.mp3'), new Audio('ufomiss2.mp3'), new Audio('ufomiss3.mp3')
-];
-const lifeLost1Sound = new Audio('lifelost.mp3');
-const lifeLost2Sound = new Audio('lifelost2.mp3');
-const gameOverSound1 = new Audio('gameover.mp3');
-const gameOverSound2 = new Audio('gameover2.mp3');
-const ufoBombSound = new Audio('ufobomb1.mp3');
-function playRandomFireSound() {
-  if (gameSoundsMuted) return;
-  const idx = Math.floor(Math.random() * fireSounds.length);
-  try { fireSounds[idx].currentTime = 0; fireSounds[idx].play(); } catch (e) {}
+// === INVADER GRID - grouped, no space between, 8 rows deep ===
+// 8 rows, 15 columns, all packed at top, starting at x=3 for center
+function spawnInvaderGrid() {
+  invaders = [];
+  const invaderCols = 15;
+  const invaderRows = 8;
+  const startX = Math.floor((tileCount - invaderCols) / 2); // center group
+  for (let row = 0; row < invaderRows; row++) {
+    for (let col = 0; col < invaderCols; col++) {
+      invaders.push({
+        x: startX + col,
+        y: row + 1,
+        emoji: emojiBank[(row * invaderCols + col) % emojiBank.length],
+        flickerPhase: Math.random() * Math.PI * 2
+      });
+    }
+  }
 }
-function playInvaderDownSound() { if (!gameSoundsMuted) try { invaderDownSound.currentTime = 0; invaderDownSound.play(); } catch (e) {} }
-function playRandomUfoMissSound() { if (!gameSoundsMuted) { const idx = Math.floor(Math.random() * ufoMissSounds.length); try { ufoMissSounds[idx].currentTime = 0; ufoMissSounds[idx].play(); } catch (e) {} } }
-function playLifeLost1Sound() { if (!gameSoundsMuted) try { lifeLost1Sound.currentTime = 0; lifeLost1Sound.play(); } catch (e) {} }
-function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.currentTime = 0; lifeLost2Sound.play(); } catch (e) {} }
-function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
-function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
-function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound].forEach(a => a.volume = v); }
 
-const shitImg = new Image();
-shitImg.src = 'BASE.png';
-const BUNKER_W = 3, BUNKER_H = 3;
-let bunkerLevel = 0;
-function getBunkerCellHp() { return Math.max(1, 5 - bunkerLevel * 0.05); }
-function getBunkerY() { const previousY = tileCount - 5; const bottomY = tileCount - 2; return Math.round(previousY + 0.4 * (bottomY - previousY)); }
-function getBunkerXs() {
-  // Distribute 3 bunkers evenly: left, center, right
-  return [
-    Math.round(tileCount * 1 / 6),
-    Math.round(tileCount * 1 / 2),
-    Math.round(tileCount * 5 / 6)
-  ];
-}
-function makeCells() { return Array.from({length: BUNKER_H}, () => Array.from({length: BUNKER_W}, () => ({ hp: getBunkerCellHp() }))); }
+// === CUSTOM BUNKERS ===
+// Middle bunker: centered, 5 cells wide
+// Left & right bunkers: 3 cells wide, 1 cell from wall
+// All bunkers 3 cells high
+
+const BUNKER_H = 3;
+const BUNKER_CELL_HP = 3;
+function makeCells(w) { return Array.from({length: BUNKER_H}, () => Array.from({length: w}, () => ({ hp: BUNKER_CELL_HP }))); }
 function buildBunkers() {
-  const y = getBunkerY();
-  const xs = getBunkerXs();
+  const y = tileCount - 6; // a bit above player
+  const middleX = Math.floor((tileCount - 5) / 2);
   return [
-    { x: xs[0] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() },
-    { x: xs[1] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() },
-    { x: xs[2] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() }
+    { x: 1, y, width: 3, height: BUNKER_H, cells: makeCells(3) }, // left bunker
+    { x: middleX, y, width: 5, height: BUNKER_H, cells: makeCells(5) }, // middle
+    { x: tileCount - 4, y, width: 3, height: BUNKER_H, cells: makeCells(3) } // right bunker
   ];
 }
 let bunkers = buildBunkers();
@@ -124,8 +87,9 @@ function drawBunker(bunker) {
       const cell = bunker.cells[row][col];
       if (cell && cell.hp > 0) {
         ctx.save();
-        ctx.globalAlpha = Math.max(0.25, cell.hp / getBunkerCellHp());
-        ctx.drawImage(shitImg, (bunker.x + col) * gridSize, (bunker.y + row) * gridSize, gridSize, gridSize);
+        ctx.globalAlpha = Math.max(0.25, cell.hp / BUNKER_CELL_HP);
+        ctx.fillStyle = "#654321";
+        ctx.fillRect((bunker.x + col) * gridSize, (bunker.y + row) * gridSize, gridSize, gridSize);
         ctx.restore();
       }
     }
@@ -142,27 +106,6 @@ function updateHUD() {
     highScoreDisplay.parentNode.insertBefore(livesDisplay, highScoreDisplay.nextSibling);
   }
   livesDisplay.textContent = ` Lives: ${playerLives}`;
-}
-
-// === INVADER GRID SETUP - now fits 21 columns ===
-function spawnInvaderGrid() {
-  invaders = [];
-  for (let row = 0; row < 10; row++) {
-    const rowEmojis = [];
-    while (rowEmojis.length < 5) {
-      const emoji = emojiBank[Math.floor(Math.random() * emojiBank.length)];
-      if (!rowEmojis.includes(emoji)) rowEmojis.push(emoji);
-    }
-    for (let col = 0; col < 5; col++) {
-      const colX = [2, 6, 10, 14, 18][col];
-      invaders.push({
-        x: colX,
-        y: row + 1,
-        emoji: rowEmojis[col],
-        flickerPhase: Math.random() * Math.PI * 2
-      });
-    }
-  }
 }
 
 // === CONTROLS ===
@@ -191,9 +134,6 @@ function resetGame() {
   invaderSpeed = 40;
   bombDropSpeed = 0.33;
   bulletTravelSpeed = 0.33;
-  ufoSlowFactor = 0.33;
-  ufoBombDropChance = 0.0125;
-  bunkerLevel = 0;
   resetBunkers();
   spawnInvaderGrid();
   updateHUD();
@@ -216,6 +156,7 @@ function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Border
   ctx.save();
   ctx.shadowColor = "#a020f0";
   ctx.shadowBlur = 30;
@@ -235,7 +176,6 @@ function gameLoop() {
 
   if (shooting && bullets.length === 0) {
     bullets.push({ x: player.x, y: player.y - 1, vy: 0 });
-    playRandomFireSound();
     shooting = false;
   }
 
@@ -253,7 +193,7 @@ function gameLoop() {
       if (invaders[i].x <= 0 || invaders[i].x >= tileCount - 1) hitEdge = true;
       if (Math.random() < 0.004) bombs.push({ x: invaders[i].x, y: invaders[i].y, emoji: "✨", vy: 0 });
     }
-    if (hitEdge) { invaderDir *= -1; for (let i = 0; i < invaders.length; i++) { invaders[i].y += 1; } playInvaderDownSound(); }
+    if (hitEdge) { invaderDir *= -1; for (let i = 0; i < invaders.length; i++) { invaders[i].y += 1; } }
     invaderTick = 0;
   }
 
@@ -267,7 +207,6 @@ function gameLoop() {
     bombDropSpeed = Math.min(2, bombDropSpeed + 0.2);
     bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
     spawnInvaderGrid();
-    bunkerLevel++;
     resetBunkers();
   }
 
@@ -275,7 +214,7 @@ function gameLoop() {
   reqId = requestAnimationFrame(gameLoop);
 }
 
-// --- Overlay, radio, login, pause, restart logic ---
+// --- Overlay, pause, restart logic ---
 
 pauseBtn.onclick = () => {
   if (!initialGameStarted) {
@@ -302,44 +241,9 @@ gameOverOverlay.onclick = () => {
   reqId = requestAnimationFrame(gameLoop);
 };
 
-radioBtn.onclick = function() {
-  if (radioAudio.paused) {
-    radioAudio.play();
-    radioBtn.textContent = "Radio ON";
-  } else {
-    radioAudio.pause();
-    radioBtn.textContent = "Radio OFF";
-  }
-  canvas.focus();
-};
-
-loginBtn.onclick = function() {
-  loginPopup.style.display = "block";
-  canvas.focus();
-};
-closeLoginPopup.onclick = function() {
-  loginPopup.style.display = "none";
-  canvas.focus();
-};
-
-muteBtn.onclick = () => {
-  gameSoundsMuted = !gameSoundsMuted;
-  updateGameSoundMute();
-  muteBtn.textContent = gameSoundsMuted ? "🔇" : "🔊";
-  canvas.focus();
-};
-
-speedSelect.onchange = (e) => {
-  invaderSpeed = Number(e.target.value);
-  canvas.focus();
-};
-
 window.addEventListener('keydown', function(e) {
   if (!initialGameStarted && overlay.style.display === "block" && (e.key === "Enter" || e.key === " ")) {
     startMainGame();
-  }
-  if (e.key === "Escape") {
-    if (loginPopup && loginPopup.style.display === "block") { loginPopup.style.display = "none"; canvas.focus(); }
   }
   if (gameOverState && (e.key === "Enter" || e.key === " ")) {
     gameOverOverlay.style.display = 'none';
@@ -360,7 +264,6 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 updateHUD();
-// DO NOT CALL gameLoop() HERE! Game starts after Play button pressed.
 
 let initialGameStarted = false;
 function startMainGame() {
