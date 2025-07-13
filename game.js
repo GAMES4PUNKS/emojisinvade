@@ -1,4 +1,5 @@
-// Emoji Invaders Game - 21x21 grid, invaders grouped with no cell space, 8 rows deep, custom bunkers
+// Emoji Invaders Game - 21x21 grid, invaders 10 wide x 8 deep, bunkers made of shit emoji
+
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
   "😍","🥰","😘","😗","😙","😚","😐","😑","😶","🙄","😏","😣","😥","😮",
@@ -16,7 +17,7 @@ const emojiBank = [
   "❤️","🧡","💛","💚","💙","💜","🤍","🤎","💔"
 ];
 
-// === GRID SETUP - 21x21 ===
+// === GRID SETUP ===
 const tileCount = 21;
 const gridSize = 20;
 const canvas = document.getElementById("gameCanvas");
@@ -44,13 +45,12 @@ const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 const pauseBtn = document.getElementById("pauseBtn");
 
-// === INVADER GRID - grouped, no space between, 8 rows deep ===
-// 8 rows, 15 columns, all packed at top, starting at x=3 for center
+// === INVADER GRID - 10 wide, 8 deep, packed ===
 function spawnInvaderGrid() {
   invaders = [];
-  const invaderCols = 15;
+  const invaderCols = 10;
   const invaderRows = 8;
-  const startX = Math.floor((tileCount - invaderCols) / 2); // center group
+  const startX = Math.floor((tileCount - invaderCols) / 2); // center
   for (let row = 0; row < invaderRows; row++) {
     for (let col = 0; col < invaderCols; col++) {
       invaders.push({
@@ -63,16 +63,15 @@ function spawnInvaderGrid() {
   }
 }
 
-// === CUSTOM BUNKERS ===
+// === CUSTOM BUNKERS - shit emoji ===
 // Middle bunker: centered, 5 cells wide
-// Left & right bunkers: 3 cells wide, 1 cell from wall
-// All bunkers 3 cells high
-
+// Left & right bunkers: 3 wide, 1 cell from wall, all bunkers 3 high
 const BUNKER_H = 3;
+const shitEmoji = "💩";
 const BUNKER_CELL_HP = 3;
 function makeCells(w) { return Array.from({length: BUNKER_H}, () => Array.from({length: w}, () => ({ hp: BUNKER_CELL_HP }))); }
 function buildBunkers() {
-  const y = tileCount - 6; // a bit above player
+  const y = tileCount - 6;
   const middleX = Math.floor((tileCount - 5) / 2);
   return [
     { x: 1, y, width: 3, height: BUNKER_H, cells: makeCells(3) }, // left bunker
@@ -82,15 +81,16 @@ function buildBunkers() {
 }
 let bunkers = buildBunkers();
 function drawBunker(bunker) {
+  ctx.font = gridSize + "px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Noto Emoji','Segoe UI Symbol','Orbitron',sans-serif";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   for (let row = 0; row < bunker.height; row++)
     for (let col = 0; col < bunker.width; col++) {
       const cell = bunker.cells[row][col];
       if (cell && cell.hp > 0) {
-        ctx.save();
         ctx.globalAlpha = Math.max(0.25, cell.hp / BUNKER_CELL_HP);
-        ctx.fillStyle = "#654321";
-        ctx.fillRect((bunker.x + col) * gridSize, (bunker.y + row) * gridSize, gridSize, gridSize);
-        ctx.restore();
+        ctx.fillText(shitEmoji, (bunker.x + col) * gridSize + gridSize / 2, (bunker.y + row) * gridSize + gridSize / 2);
+        ctx.globalAlpha = 1;
       }
     }
 }
@@ -197,7 +197,7 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  drawEmoji(player.x, player.y, "💩");
+  drawEmoji(player.x, player.y, shitEmoji);
   bullets.forEach(b => drawEmoji(b.x, Math.round(b.y), "💥"));
   bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), b.emoji, true));
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
