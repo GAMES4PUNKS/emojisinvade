@@ -1,6 +1,4 @@
-// Emoji Invaders Game - Bunker placement and spaceship.mp3 bug fix (2025-07-14)
-// Center bunker is 5x3, left/right bunkers are 3x3 but shifted 1 column off canvas.
-// spaceship.mp3 now only plays when a vertical row of invaders is completely destroyed (not every frame).
+// Emoji Invaders Game - All requested bugfixes and bunker placement, as well as spaceship.mp3 logic
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -19,20 +17,22 @@ const emojiBank = [
   "❤️","🧡","💛","💚","💙","💜","🤍","🤎","💔"
 ];
 
-const group1 = emojiBank.slice(0, 54);    // lowest points
-const group2 = emojiBank.slice(54, 108);  // highest points
+const group1 = emojiBank.slice(0, 54);
+const group2 = emojiBank.slice(54, 108);
 
 const emojiBonusScores = {};
-for (let i = 0; i < emojiBank.length; i++)
-  emojiBonusScores[emojiBank[i]] = 1000 + i * 50;
+for (let i = 0; i < emojiBank.length; i++) emojiBonusScores[emojiBank[i]] = 1000 + i * 50;
 
-// --- 21x21 grid, player centered ---
 const tileCount = 21;
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 420;
 canvas.height = 420;
 const gridSize = canvas.width / tileCount;
+
+let isPaused = false;
+let gameOverState = false;
+let reqId = null;
 
 let score = 0;
 let highScore = Number(localStorage.getItem("high_score") || 0);
@@ -53,7 +53,6 @@ const highScoreDisplay = document.getElementById("highScoreDisplay");
 const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 
-// --- SOUND FILES ---
 let gameSoundsMuted = false;
 const fireSounds = [
   new Audio('fire.mp3'), new Audio('fire2.mp3'), new Audio('fire3.mp3'),
@@ -93,7 +92,6 @@ function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTi
 function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, spacemanSound, spaceshipSound, rocketSound, satelliteSound, gameOverSound1, gameOverSound2, ufoBombSound].forEach(a => a.volume = v); }
 
 // --- BUNKERS ---
-// Left/right bunkers are now 1 cell off canvas, center bunker is 5x3
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 const BUNKER_W_LEFT = 3, BUNKER_W_MID = 5, BUNKER_W_RIGHT = 3, BUNKER_H = 3;
@@ -101,10 +99,9 @@ let bunkerLevel = 0;
 function getBunkerCellHp() { return Math.max(1, 5 - bunkerLevel * 0.05); }
 function getBunkerY() { const previousY = tileCount - 5; const bottomY = tileCount - 2; return Math.round(previousY + 0.4 * (bottomY - previousY)); }
 function getBunkerXs() {
-  // Left bunker starts at -1 (1 cell off canvas), center mid, right at tileCount - BUNKER_W_RIGHT (off canvas)
-  const left = -1;
-  const mid = Math.floor(tileCount/2 - BUNKER_W_MID/2);
-  const right = tileCount - BUNKER_W_RIGHT;
+  const left = -1; // left bunker 1 cell off canvas
+  const mid = Math.floor(tileCount/2 - BUNKER_W_MID/2); // centered
+  const right = tileCount - BUNKER_W_RIGHT; // right bunker 1 cell off canvas
   return [left, mid, right];
 }
 function makeCells(w) { return Array.from({length: BUNKER_H}, () => Array.from({length: w}, () => ({ hp: getBunkerCellHp() }))); }
@@ -118,12 +115,10 @@ function buildBunkers() {
   ];
 }
 let bunkers = buildBunkers();
-
 function drawBunker(bunker) {
-  for (let row = 0; row < bunker.height; row++) {
+  for (let row = 0; row < bunker.height; row++)
     for (let col = 0; col < bunker.width; col++) {
       const cell = bunker.cells[row][col];
-      // Only draw visible cells
       if (cell && cell.hp > 0 && bunker.x + col >= 0 && bunker.x + col < tileCount) {
         ctx.save();
         ctx.globalAlpha = Math.max(0.25, cell.hp / getBunkerCellHp());
@@ -131,7 +126,6 @@ function drawBunker(bunker) {
         ctx.restore();
       }
     }
-  }
 }
 function resetBunkers() { bunkers = buildBunkers(); }
 
@@ -147,7 +141,7 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-// --- 10 invaders wide by 8 invaders deep ---
+// --- INVADERS ---
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 8; row++) {
@@ -158,7 +152,7 @@ function spawnInvaderGrid() {
     }
     for (let col = 0; col < 10; col++) {
       invaders.push({
-        x: col + 5, // Center 10 wide in 21 grid: starts at 5 ends at 14
+        x: col + 5, // Centered in the grid
         y: row + 1,
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
@@ -197,7 +191,16 @@ function maybeSpawnBonusEmoji() {
     const emoji = getRandomUFOEmoji();
     const speed = getUfoSpeed(emoji);
     if (group2.includes(emoji)) playRocketSound();
-    bonusEmoji = { emoji, x: fromLeft ? 0 : tileCount - 1, y: 0, dir: fromLeft ? 1 : -1, speed: speed, progress: 0, bankIndex: emojiBank.indexOf(emoji), canDropBomb: Math.random() < 0.5 };
+    bonusEmoji = {
+      emoji,
+      x: fromLeft ? 0 : tileCount - 1,
+      y: 0,
+      dir: fromLeft ? 1 : -1,
+      speed: speed,
+      progress: 0,
+      bankIndex: emojiBank.indexOf(emoji),
+      canDropBomb: Math.random() < 0.5
+    };
     try { if (!gameSoundsMuted) { ufoSound.currentTime = 0; ufoSound.play(); } } catch (e) {}
   }
 }
@@ -213,7 +216,7 @@ function getRandomUFOEmoji() {
   }
 }
 function getUfoSpeed(emoji) {
-  const maxSpeed = 0.15 * ufoSlowFactor; // Highest rewarded ufo
+  const maxSpeed = 0.15 * ufoSlowFactor;
   const minSpeed = 0.05 * ufoSlowFactor;
   const idx = emojiBank.indexOf(emoji);
   if (idx === emojiBank.length - 1) return maxSpeed;
@@ -223,7 +226,18 @@ function updateBonusEmoji() {
   if (!bonusEmoji) return;
   bonusEmoji.progress += bonusEmoji.speed;
   if (bonusEmoji.progress >= 1) { bonusEmoji.x += bonusEmoji.dir; bonusEmoji.progress = 0; }
-  if (bonusEmoji.canDropBomb && Math.random() < 0) { }
+  // UFO bomb drop logic (fixed)
+  if (bonusEmoji.canDropBomb && Math.random() < ufoBombDropChance) {
+    bombs.push({
+      x: bonusEmoji.x,
+      y: bonusEmoji.y + 1,
+      emoji: "💣",
+      vy: 0,
+      fromUfo: true
+    });
+    playUfoBombSound();
+    bonusEmoji.canDropBomb = false;
+  }
   if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) { try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {} bonusEmoji = null; }
 }
 function drawBonusEmoji() { if (!bonusEmoji) return; let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress; drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize); }
@@ -299,6 +313,26 @@ function manualRestart() {
 function togglePause() {
   if (isPaused && !gameOverState) { isPaused = false; overlay.style.display = "none"; reqId = requestAnimationFrame(gameLoop); }
   else if (!gameOverState) { isPaused = true; overlay.textContent = "PAUSED"; overlay.style.display = "block"; if (reqId) cancelAnimationFrame(reqId); }
+}
+
+// --- MISSING resetGame function ---
+function resetGame() {
+  score = 0;
+  playerLives = 3;
+  player.x = Math.floor(tileCount/2);
+  player.y = tileCount - 1;
+  player.speedCounter = 0;
+  bullets = [];
+  bombs = [];
+  invaderDir = 1;
+  invaderSpeed = 40;
+  invaderTick = 0;
+  bonusEmoji = null;
+  bonusTimer = 0;
+  bunkerLevel = 0;
+  resetBunkers();
+  spawnInvaderGrid();
+  updateHUD();
 }
 
 function gameLoop() {
@@ -389,8 +423,7 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // --- spaceship.mp3 only when a column is destroyed (not every frame) ---
-  // Find columns that were destroyed THIS frame
+  // spaceship.mp3 logic -- only plays when a column is destroyed
   if (!gameLoop.prevColumnsAlive) gameLoop.prevColumnsAlive = Array(10).fill(true);
 
   let columnsAlive = Array(10).fill(false);
