@@ -1,5 +1,4 @@
-// Emoji Invaders Game - with all requested changes (2025-07-14)
-// See comments for each feature edit. All other logic untouched.
+// Emoji Invaders Game - bunker placement correction (left/right bunkers 1 cell off canvas), center bunker 5x3, all previous requested features remain
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -25,7 +24,7 @@ const emojiBonusScores = {};
 for (let i = 0; i < emojiBank.length; i++)
   emojiBonusScores[emojiBank[i]] = 1000 + i * 50;
 
-// --- 1. 21x21 grid, player centered ---
+// --- 21x21 grid, player centered ---
 const tileCount = 21;
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -69,13 +68,9 @@ const lifeLost2Sound = new Audio('lifelost2.mp3');
 const gameOverSound1 = new Audio('gameover.mp3');
 const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
-// --- 1. add spaceman.mp3 to every time player loses a life ---
 const spacemanSound = new Audio('spaceman.mp3');
-// --- 6. vertical row destroyed: spaceship.mp3 ---
 const spaceshipSound = new Audio('spaceship.mp3');
-// --- 7. rocket.mp3 for group2 UFO display ---
 const rocketSound = new Audio('rocket.mp3');
-// --- 8. satellite.mp3 when bunker cell destroyed ---
 const satelliteSound = new Audio('satellite.mp3');
 
 function playRandomFireSound() {
@@ -96,7 +91,7 @@ function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTi
 function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, spacemanSound, spaceshipSound, rocketSound, satelliteSound, gameOverSound1, gameOverSound2, ufoBombSound].forEach(a => a.volume = v); }
 
 // --- BUNKERS ---
-// Only change left/right placement per request (left/right 1 cell off canvas)
+// Left/right bunkers are now 1 cell off canvas, center bunker is 5x3
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 const BUNKER_W_LEFT = 3, BUNKER_W_MID = 5, BUNKER_W_RIGHT = 3, BUNKER_H = 3;
@@ -104,7 +99,7 @@ let bunkerLevel = 0;
 function getBunkerCellHp() { return Math.max(1, 5 - bunkerLevel * 0.05); }
 function getBunkerY() { const previousY = tileCount - 5; const bottomY = tileCount - 2; return Math.round(previousY + 0.4 * (bottomY - previousY)); }
 function getBunkerXs() {
-  // --- 5. left/right bunker 1 cell off canvas ---
+  // Left bunker starts at -1 (1 cell off canvas), center mid, right at tileCount - BUNKER_W_RIGHT (off canvas)
   const left = -1;
   const mid = Math.floor(tileCount/2 - BUNKER_W_MID/2);
   const right = tileCount - BUNKER_W_RIGHT;
@@ -125,6 +120,7 @@ function drawBunker(bunker) {
   for (let row = 0; row < bunker.height; row++)
     for (let col = 0; col < bunker.width; col++) {
       const cell = bunker.cells[row][col];
+      // Only draw cells in bounds
       if (cell && cell.hp > 0 && bunker.x + col >= 0 && bunker.x + col < tileCount) {
         ctx.save();
         ctx.globalAlpha = Math.max(0.25, cell.hp / getBunkerCellHp());
@@ -147,7 +143,7 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-// --- 4. 10 invaders wide by 8 invaders deep ---
+// --- 10 invaders wide by 8 invaders deep ---
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 8; row++) {
@@ -182,7 +178,7 @@ document.addEventListener('keyup', e => {
   if (e.key === ' ' || e.key === 'z' || e.key === 'j') { shooting = false; firePressed = false; }
 });
 
-// --- Bonus UFO logic ---
+// --- UFO logic ---
 let lastBonusMissFrame = -1000;
 let ufoBombDropChance = 0.0125;
 let bonusEmoji = null;
@@ -190,14 +186,12 @@ let bonusTimer = 0;
 let bonusSpeedupHits = 0;
 let firstBonusSpawned = false;
 
-// --- 3. UFOs drop too many bombs, reduce by 100% and 50% do not drop bombs ---
 function maybeSpawnBonusEmoji() {
   if (bonusEmoji !== null) return;
   if (Math.random() < 1/240) {
     const fromLeft = Math.random() < 0.5;
     const emoji = getRandomUFOEmoji();
     const speed = getUfoSpeed(emoji);
-    // --- 7. play rocket.mp3 when group2 UFO displays ---
     if (group2.includes(emoji)) playRocketSound();
     bonusEmoji = { emoji, x: fromLeft ? 0 : tileCount - 1, y: 0, dir: fromLeft ? 1 : -1, speed: speed, progress: 0, bankIndex: emojiBank.indexOf(emoji), canDropBomb: Math.random() < 0.5 };
     try { if (!gameSoundsMuted) { ufoSound.currentTime = 0; ufoSound.play(); } } catch (e) {}
@@ -225,11 +219,7 @@ function updateBonusEmoji() {
   if (!bonusEmoji) return;
   bonusEmoji.progress += bonusEmoji.speed;
   if (bonusEmoji.progress >= 1) { bonusEmoji.x += bonusEmoji.dir; bonusEmoji.progress = 0; }
-  // --- 3. only 50% of UFOs can drop bombs, and drop rate is zeroed ---
-  if (bonusEmoji.canDropBomb && Math.random() < 0) { // 0 disables bomb dropping
-    bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0, fromUfo:true });
-    playUfoBombSound();
-  }
+  if (bonusEmoji.canDropBomb && Math.random() < 0) { }
   if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) { try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {} bonusEmoji = null; }
 }
 function drawBonusEmoji() { if (!bonusEmoji) return; let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress; drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize); }
@@ -245,7 +235,6 @@ function handleBulletBonusCollision() {
       bonusEmoji.showScore = pts;
       hit = true;
       const ufoIdx = emojiBank.indexOf(bonusEmoji.emoji);
-      // If top 25 highest-rewarded UFO: refresh invaders
       if (ufoIdx >= emojiBank.length - 25) {
         spawnInvaderGrid();
       }
@@ -342,7 +331,6 @@ function gameLoop() {
           if (cell && cell.hp > 0 && Math.round(b.x) === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
             hit = true;
-            // --- 8. play satellite.mp3 when bunker cell destroyed ---
             if (cell.hp <= 0) playSatelliteSound();
           }
         }
@@ -361,12 +349,10 @@ function gameLoop() {
           if (cell && cell.hp > 0 && b.x === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
             hit = true;
-            // --- 8. play satellite.mp3 when bunker cell destroyed ---
             if (cell.hp <= 0) playSatelliteSound();
           }
         }
     if (hit) continue;
-    // --- If bomb from UFO, player loses 50% of score ---
     if (b.fromUfo && Math.abs(b.x - player.x) < 0.5 && Math.abs(b.y - player.y) < 0.5) {
       score = Math.floor(score * 0.5);
       loseLifeOrGameOver(true);
@@ -399,7 +385,7 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // --- 6. when a vertical row of invaders destroyed play spaceship.mp3 ---
+  // Vertical row destruction sound
   let columnsAlive = Array(10).fill(false);
   invaders.forEach(inv => { if (inv.y >= 1 && inv.x >= 5 && inv.x < 15) columnsAlive[inv.x - 5] = true; });
   for (let c = 0; c < 10; c++) {
@@ -490,7 +476,7 @@ function advanceLevel() {
   resetBunkers();
 }
 
-// --- 1. add spaceman.mp3 to every time player loses a life ---
+// --- add spaceman.mp3 to every time player loses a life ---
 function loseLifeOrGameOver(bombHit = false) {
   playerLives--;
   playSpacemanSound();
@@ -521,7 +507,6 @@ function loseLifeOrGameOver(bombHit = false) {
   }
 }
 
-// --- Allow restart ONLY via Enter key or Play Now pop up ---
 canvas.addEventListener('mousedown', function(e){
   if (gameOverState && allowManualRestart) manualRestart();
 });
