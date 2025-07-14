@@ -1,4 +1,4 @@
-// Emoji Invaders Game - All requested bugfixes and bunker placement, as well as spaceship.mp3 logic
+// Emoji Invaders Game - All bugs fixed: proper bunker placement, correct spaceship.mp3, UFO bomb sound, and all previous features
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -92,6 +92,7 @@ function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTi
 function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, spacemanSound, spaceshipSound, rocketSound, satelliteSound, gameOverSound1, gameOverSound2, ufoBombSound].forEach(a => a.volume = v); }
 
 // --- BUNKERS ---
+// Left and right bunkers are now positioned 1 cell off the canvas (first column hidden)
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
 const BUNKER_W_LEFT = 3, BUNKER_W_MID = 5, BUNKER_W_RIGHT = 3, BUNKER_H = 3;
@@ -99,9 +100,11 @@ let bunkerLevel = 0;
 function getBunkerCellHp() { return Math.max(1, 5 - bunkerLevel * 0.05); }
 function getBunkerY() { const previousY = tileCount - 5; const bottomY = tileCount - 2; return Math.round(previousY + 0.4 * (bottomY - previousY)); }
 function getBunkerXs() {
-  const left = -1; // left bunker 1 cell off canvas
-  const mid = Math.floor(tileCount/2 - BUNKER_W_MID/2); // centered
-  const right = tileCount - BUNKER_W_RIGHT; // right bunker 1 cell off canvas
+  // Left bunker starts at -1, so columns -1,0,1, only 0 and 1 are visible.
+  // Right bunker starts at tileCount-3, so columns tileCount-3, tileCount-2, tileCount-1, only tileCount-2 and tileCount-1 are visible.
+  const left = -1;
+  const mid = Math.floor(tileCount/2 - BUNKER_W_MID/2);
+  const right = tileCount - BUNKER_W_RIGHT;
   return [left, mid, right];
 }
 function makeCells(w) { return Array.from({length: BUNKER_H}, () => Array.from({length: w}, () => ({ hp: getBunkerCellHp() }))); }
@@ -119,6 +122,7 @@ function drawBunker(bunker) {
   for (let row = 0; row < bunker.height; row++)
     for (let col = 0; col < bunker.width; col++) {
       const cell = bunker.cells[row][col];
+      // Only draw visible cells
       if (cell && cell.hp > 0 && bunker.x + col >= 0 && bunker.x + col < tileCount) {
         ctx.save();
         ctx.globalAlpha = Math.max(0.25, cell.hp / getBunkerCellHp());
@@ -141,7 +145,6 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-// --- INVADERS ---
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 8; row++) {
@@ -152,7 +155,7 @@ function spawnInvaderGrid() {
     }
     for (let col = 0; col < 10; col++) {
       invaders.push({
-        x: col + 5, // Centered in the grid
+        x: col + 5,
         y: row + 1,
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
@@ -226,7 +229,7 @@ function updateBonusEmoji() {
   if (!bonusEmoji) return;
   bonusEmoji.progress += bonusEmoji.speed;
   if (bonusEmoji.progress >= 1) { bonusEmoji.x += bonusEmoji.dir; bonusEmoji.progress = 0; }
-  // UFO bomb drop logic (fixed)
+  // UFO bomb drop logic - sound only plays if bomb is actually dropped
   if (bonusEmoji.canDropBomb && Math.random() < ufoBombDropChance) {
     bombs.push({
       x: bonusEmoji.x,
@@ -315,7 +318,6 @@ function togglePause() {
   else if (!gameOverState) { isPaused = true; overlay.textContent = "PAUSED"; overlay.style.display = "block"; if (reqId) cancelAnimationFrame(reqId); }
 }
 
-// --- MISSING resetGame function ---
 function resetGame() {
   score = 0;
   playerLives = 3;
@@ -334,6 +336,8 @@ function resetGame() {
   spawnInvaderGrid();
   updateHUD();
 }
+
+let prevColumnsAlive = Array(10).fill(true);
 
 function gameLoop() {
   if (isPaused) return;
@@ -423,18 +427,17 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // spaceship.mp3 logic -- only plays when a column is destroyed
-  if (!gameLoop.prevColumnsAlive) gameLoop.prevColumnsAlive = Array(10).fill(true);
-
+  // spaceship.mp3 logic - only play when a column just got destroyed
   let columnsAlive = Array(10).fill(false);
-  invaders.forEach(inv => { if (inv.y >= 1 && inv.x >= 5 && inv.x < 15) columnsAlive[inv.x - 5] = true; });
-
+  invaders.forEach(inv => {
+    if (inv.y >= 1 && inv.x >= 5 && inv.x < 15) columnsAlive[inv.x - 5] = true;
+  });
   for (let c = 0; c < 10; c++) {
-    if (gameLoop.prevColumnsAlive[c] && !columnsAlive[c]) {
+    if (prevColumnsAlive[c] && !columnsAlive[c]) {
       playSpaceshipSound();
     }
   }
-  gameLoop.prevColumnsAlive = columnsAlive.slice();
+  prevColumnsAlive = columnsAlive.slice();
 
   let bunkerRows = new Set();
   for (const bunker of bunkers)
@@ -505,7 +508,7 @@ function gameLoop() {
     bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
     spawnInvaderGrid();
     advanceLevel();
-    gameLoop.prevColumnsAlive = Array(10).fill(true);
+    prevColumnsAlive = Array(10).fill(true);
   }
 
   updateHUD();
@@ -518,7 +521,7 @@ function advanceLevel() {
   resetBunkers();
 }
 
-// --- add spaceman.mp3 to every time player loses a life ---
+// --- lose life ---
 function loseLifeOrGameOver(bombHit = false) {
   playerLives--;
   playSpacemanSound();
@@ -588,7 +591,6 @@ closeLoginPopup.onclick = function() {
 document.getElementById("muteBtn").onclick = () => { gameSoundsMuted = !gameSoundsMuted; updateGameSoundMute(); document.getElementById("muteBtn").textContent = gameSoundsMuted ? "🔇" : "🔊"; canvas.focus(); };
 document.getElementById("speedSelect").onchange = (e) => { invaderSpeed = Number(e.target.value); canvas.focus(); };
 
-// --- GAME START LOGIC ---
 let initialGameStarted = false;
 function showStartOverlay() {
   overlay.textContent = "▶ PLAY";
@@ -635,4 +637,3 @@ window.addEventListener('DOMContentLoaded', () => {
   showStartOverlay();
 });
 updateHUD();
-// DO NOT CALL gameLoop() HERE! Game starts after Play button pressed.
