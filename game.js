@@ -1,4 +1,6 @@
-// Emoji Invaders Game - bunker placement correction (left/right bunkers 1 cell off canvas), center bunker 5x3, all previous requested features remain
+// Emoji Invaders Game - Bunker placement and spaceship.mp3 bug fix (2025-07-14)
+// Center bunker is 5x3, left/right bunkers are 3x3 but shifted 1 column off canvas.
+// spaceship.mp3 now only plays when a vertical row of invaders is completely destroyed (not every frame).
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -116,11 +118,12 @@ function buildBunkers() {
   ];
 }
 let bunkers = buildBunkers();
+
 function drawBunker(bunker) {
-  for (let row = 0; row < bunker.height; row++)
+  for (let row = 0; row < bunker.height; row++) {
     for (let col = 0; col < bunker.width; col++) {
       const cell = bunker.cells[row][col];
-      // Only draw cells in bounds
+      // Only draw visible cells
       if (cell && cell.hp > 0 && bunker.x + col >= 0 && bunker.x + col < tileCount) {
         ctx.save();
         ctx.globalAlpha = Math.max(0.25, cell.hp / getBunkerCellHp());
@@ -128,6 +131,7 @@ function drawBunker(bunker) {
         ctx.restore();
       }
     }
+  }
 }
 function resetBunkers() { bunkers = buildBunkers(); }
 
@@ -385,15 +389,19 @@ function gameLoop() {
     invaderTick = 0;
   }
 
-  // Vertical row destruction sound
+  // --- spaceship.mp3 only when a column is destroyed (not every frame) ---
+  // Find columns that were destroyed THIS frame
+  if (!gameLoop.prevColumnsAlive) gameLoop.prevColumnsAlive = Array(10).fill(true);
+
   let columnsAlive = Array(10).fill(false);
   invaders.forEach(inv => { if (inv.y >= 1 && inv.x >= 5 && inv.x < 15) columnsAlive[inv.x - 5] = true; });
+
   for (let c = 0; c < 10; c++) {
-    if (!columnsAlive[c] && !columnsAlive._destroyed) {
+    if (gameLoop.prevColumnsAlive[c] && !columnsAlive[c]) {
       playSpaceshipSound();
-      columnsAlive._destroyed = true;
     }
   }
+  gameLoop.prevColumnsAlive = columnsAlive.slice();
 
   let bunkerRows = new Set();
   for (const bunker of bunkers)
@@ -464,6 +472,7 @@ function gameLoop() {
     bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
     spawnInvaderGrid();
     advanceLevel();
+    gameLoop.prevColumnsAlive = Array(10).fill(true);
   }
 
   updateHUD();
