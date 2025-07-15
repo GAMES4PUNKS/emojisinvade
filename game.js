@@ -364,6 +364,7 @@ function gameLoop() {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && Math.round(b.x) === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
+            playSatelliteSound();
             hit = true;
           }
         }
@@ -380,6 +381,7 @@ function gameLoop() {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && b.x === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
+            playSatelliteSound();
             hit = true;
           }
         }
@@ -425,6 +427,7 @@ function gameLoop() {
           for (let col = 0; col < bunker.width; col++) {
             const cell = bunker.cells[row][col];
             if (cell && cell.hp > 0) cell.hp--;
+            playSatelliteSound();
           }
       invaderAtBunker = true;
       break;
