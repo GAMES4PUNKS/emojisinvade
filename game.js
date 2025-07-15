@@ -200,15 +200,12 @@ function getUfoSpeed(emoji) {
   return minSpeed + ((maxSpeed - minSpeed) * idx / (emojiBank.length - 1));
 }
 
-// --- UFO BOMB LOGIC: 50% of UFOs never drop bombs, 50% can, but 100% reduction = none ever drop ---
 function maybeSpawnBonusEmoji() {
   if (bonusEmoji !== null) return;
   if (Math.random() < 1/240) {
     const fromLeft = Math.random() < 0.5;
     const emoji = getRandomUFOEmoji();
     const speed = getUfoSpeed(emoji);
-    // 50% can never drop bombs
-    const canDropBomb = Math.random() < 0.5;
     bonusEmoji = {
       emoji,
       x: fromLeft ? 0 : tileCount - 1,
@@ -216,31 +213,29 @@ function maybeSpawnBonusEmoji() {
       dir: fromLeft ? 1 : -1,
       speed: speed,
       progress: 0,
-      bankIndex: emojiBank.indexOf(emoji),
-      canDropBomb: canDropBomb,
-      bombDropped: false
+      bankIndex: emojiBank.indexOf(emoji)
     };
     try { if (!gameSoundsMuted) { ufoSound.currentTime = 0; ufoSound.play(); } } catch (e) {}
   }
 }
+
 function updateBonusEmoji() {
   if (!bonusEmoji) return;
   bonusEmoji.progress += bonusEmoji.speed;
-  if (bonusEmoji.progress >= 1) { bonusEmoji.x += bonusEmoji.dir; bonusEmoji.progress = 0; }
-  // 100% reduction = never drop bombs, even if canDropBomb is true
-  // (Leave this code in for future use, but never runs now)
-  if (
-    bonusEmoji.canDropBomb &&
-    !bonusEmoji.bombDropped &&
-    false // this disables bomb dropping
-  ) {
-    // bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 });
-    // playUfoBombSound();
-    // bonusEmoji.bombDropped = true;
+  if (bonusEmoji.progress >= 1) {
+    bonusEmoji.x += bonusEmoji.dir;
+    bonusEmoji.progress = 0;
   }
-  if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) { try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {} bonusEmoji = null; }
+  // UFO bomb drop probability reduced by 50%
+  if (Math.random() < ufoBombDropChance * 0.5) {
+    bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 });
+    playUfoBombSound();
+  }
+  if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) {
+    try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
+    bonusEmoji = null;
+  }
 }
-// -- END UFO BOMB LOGIC ---
 
 function drawBonusEmoji() { if (!bonusEmoji) return; let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress; drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize); }
 function handleBulletBonusCollision() {
