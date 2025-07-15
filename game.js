@@ -50,7 +50,11 @@ let invaderTick = 0;
 let bulletCooldown = 0;
 
 // Use SAME speed for bombs (invaders/ufo) and bullets (player)
+let projectileSoundPoolSize = 3;
 let projectileSpeed = 0.33;
+
+// Sound pools for overlapping bunker destruction sounds
+const bunkerSounds = Array.from({length: projectileSoundPoolSize}, () => new Audio('satellite.mp3'));
 
 let ufoSlowFactor = 0.33;
 const scoreDisplay = document.getElementById("scoreDisplay");
@@ -76,7 +80,7 @@ const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
 const spacemanSound = new Audio('spaceman.mp3');
 const rocketSound = new Audio('rocket.mp3');
-const satelliteSound = new Audio('satellite.mp3'); // satellite.mp3 used for bunker cell destroy
+// satellite.mp3 now handled by bunkerSounds pool
 
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
@@ -92,17 +96,22 @@ function playLifeLost1Sound() { if (!gameSoundsMuted) try { lifeLost1Sound.curre
 function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.currentTime = 0; lifeLost2Sound.play(); } catch (e) {} }
 function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
-// MP3 bunker cell destroy - always pause and reset before play!
+// Use pool for bunker cell sound so it ALWAYS overlaps/repeats
 function playSatelliteSound() {
   if (!gameSoundsMuted) {
-    try {
-      satelliteSound.pause();
-      satelliteSound.currentTime = 0;
-      satelliteSound.play();
-    } catch (e) {}
+    const sound = bunkerSounds.find(a => a.paused || a.ended);
+    if (sound) {
+      sound.currentTime = 0;
+      sound.volume = 1;
+      sound.play();
+    }
   }
 }
-function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, rocketSound, satelliteSound].forEach(a => a.volume = v); }
+function updateGameSoundMute() {
+  const v = gameSoundsMuted ? 0 : 1;
+  [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, rocketSound].forEach(a => a.volume = v);
+  bunkerSounds.forEach(a => a.volume = v);
+}
 
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
@@ -117,9 +126,8 @@ function getBunkerY() {
   return Math.round(previousY + 0.4 * (bottomY - previousY)); 
 }
 function getBunkerXs() { 
-  // LEFT: moved 2 cells left, CENTER/RIGHT unchanged
   return [
-    Math.round(tileCount * 1 / 6) - 2, // moved 2 cells left
+    Math.round(tileCount * 1 / 6) - 2,
     Math.round(tileCount * 1 / 2),
     Math.round(tileCount * 5 / 6)
   ]; 
@@ -177,7 +185,7 @@ function spawnInvaderGrid() {
     }
     for (let col = 0; col < 5; col++) {
       invaders.push({
-        x: col * 2 + 2, // 1 cell gap between invaders horizontally
+        x: col * 2 + 2,
         y: row + 1,
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
@@ -508,7 +516,7 @@ function advanceLevel() {
   ufoBombDropChance += 0.0125;
   bunkerLevel++;
   resetBunkers();
-  projectileSpeed *= 1.005; // 0.5% speed increase per level
+  projectileSpeed *= 1.005;
 }
 
 function loseLifeOrGameOver(bombHit = false) {
