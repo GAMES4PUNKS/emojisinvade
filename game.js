@@ -65,10 +65,6 @@ const gameOverSound1 = new Audio('gameover.mp3');
 const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
 const spacemanSound = new Audio('spaceman.mp3');
-
-// Use the correct path for spaceship.mp3 (it is in repo root)
-const spaceshipSound = new Audio('spaceship.mp3');
-
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
 }
@@ -83,34 +79,7 @@ function playLifeLost1Sound() { if (!gameSoundsMuted) try { lifeLost1Sound.curre
 function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.currentTime = 0; lifeLost2Sound.play(); } catch (e) {} }
 function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
-
-// --- Robust spaceship.mp3 user gesture unlock ---
-let userHasInteracted = false;
-function unlockSoundOnGesture() {
-  if (!userHasInteracted) {
-    userHasInteracted = true;
-    spaceshipSound.muted = false;
-  }
-}
-document.addEventListener('keydown', unlockSoundOnGesture);
-document.addEventListener('mousedown', unlockSoundOnGesture);
-
-function playSpaceshipSound() {
-  if (!gameSoundsMuted && userHasInteracted) {
-    try {
-      spaceshipSound.pause();
-      spaceshipSound.currentTime = 0;
-      spaceshipSound.muted = false;
-      spaceshipSound.play();
-      console.log("spaceship.mp3 played!");
-    } catch (e) {
-      console.log("spaceship.mp3 play error:", e);
-    }
-  } else {
-    console.log("spaceship.mp3 NOT played: gameSoundsMuted=", gameSoundsMuted, "userHasInteracted=", userHasInteracted);
-  }
-}
-function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, spaceshipSound].forEach(a => a.volume = v); }
+function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound].forEach(a => a.volume = v); }
 
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
@@ -148,13 +117,8 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-// --- Robust spaceship column clear logic ---
-let emptiedColumns = new Set(); // columns already played sound for
-let invaderStartColumns = new Set(); // columns used at spawn
-
 function spawnInvaderGrid() {
   invaders = [];
-  invaderStartColumns = new Set();
   for (let row = 0; row < 10; row++) {
     const rowEmojis = [];
     while (rowEmojis.length < 5) {
@@ -162,17 +126,14 @@ function spawnInvaderGrid() {
       if (!rowEmojis.includes(emoji)) rowEmojis.push(emoji);
     }
     for (let col = 0; col < 5; col++) {
-      let xVal = col * 2 + 2;
       invaders.push({
-        x: xVal,
+        x: col * 2 + 2,
         y: row + 1,
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
       });
-      invaderStartColumns.add(xVal); // Track all columns used
     }
   }
-  emptiedColumns = new Set(); // Reset on new wave
 }
 
 let left = false, right = false, shooting = false;
@@ -274,25 +235,6 @@ function updateBonusEmoji() {
     try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
     bonusEmoji = null;
   }
-}
-
-function drawNegativeBomb(x, y, size = gridSize) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(x * gridSize + gridSize/2, y * gridSize + gridSize/2, size/2.4, 0, Math.PI * 2);
-  ctx.fillStyle = "white";
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(x * gridSize + gridSize/2, y * gridSize + gridSize/2 - size/2.4);
-  ctx.lineTo(x * gridSize + gridSize/2, y * gridSize + gridSize/2 - size/1.3);
-  ctx.strokeStyle = "black";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(x * gridSize + gridSize/2, y * gridSize + gridSize/2 - size/1.3, size/9, 0, Math.PI * 2);
-  ctx.fillStyle = "black";
-  ctx.fill();
-  ctx.restore();
 }
 
 function drawBonusEmoji() { if (!bonusEmoji) return; let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress; drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize); }
@@ -460,7 +402,6 @@ function gameLoop() {
     return;
   }
 
-  // --- Bullet-invader collision ---
   let bulletIndicesToRemove = new Set(), invaderIndicesToRemove = new Set();
   bullets.forEach((b, bi) => {
     invaders.forEach((inv, ji) => {
@@ -482,16 +423,6 @@ function gameLoop() {
     return true;
   });
 
-  // --- spaceship.mp3 robust column clear logic ---
-  let currentColumns = new Set(invaders.map(inv => Math.round(inv.x)));
-  for (let col of invaderStartColumns) {
-    if (!currentColumns.has(col) && !emptiedColumns.has(col)) {
-      console.log("Column cleared:", col);
-      playSpaceshipSound();
-      emptiedColumns.add(col);
-    }
-  }
-
   maybeSpawnBonusEmoji();
   updateBonusEmoji();
   drawBonusEmoji();
@@ -501,13 +432,7 @@ function gameLoop() {
 
   drawEmoji(player.x, player.y, "💩");
   bullets.forEach(b => drawEmoji(b.x, Math.round(b.y), "💥"));
-  bombs.forEach(b => {
-    if (b.emoji === "💣") {
-      drawNegativeBomb(b.x, Math.round(b.y));
-    } else {
-      drawEmoji(b.x, Math.round(b.y), b.emoji, true);
-    }
-  });
+  bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), b.emoji, true));
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
 
   if (invaders.length === 0) {
