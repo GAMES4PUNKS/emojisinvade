@@ -369,7 +369,7 @@ function gameLoop() {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && Math.round(b.x) === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
-            if (cell.hp === 0) playSatelliteSound(); // Play sound on cell destroyed
+            if (cell.hp === 0) playSatelliteSound();
             hit = true;
           }
         }
@@ -387,7 +387,7 @@ function gameLoop() {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && b.x === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
-            if (cell.hp === 0) playSatelliteSound(); // Play sound on cell destroyed
+            if (cell.hp === 0) playSatelliteSound();
             hit = true;
           }
         }
@@ -486,7 +486,6 @@ function gameLoop() {
 
   if (invaders.length === 0) {
     invaderSpeed = Math.max(1, invaderSpeed - 0.5);
-    // BOMB & BULLET SPEEDS INCREASE BY 0.5% PER LEVEL
     bombDropSpeed *= 1.005;
     bulletTravelSpeed = bombDropSpeed;
     try { rocketSound.currentTime = 0; rocketSound.play(); } catch(e) {}
