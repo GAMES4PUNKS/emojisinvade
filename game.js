@@ -115,12 +115,13 @@ function makeCells(width = BUNKER_W) {
     Array.from({length: width}, () => ({ hp: getBunkerCellHp() }))
   ); 
 }
+// This version centers the center bunker perfectly
 function buildBunkers() {
   const y = getBunkerY();
   const xs = getBunkerXs();
   return [
     { x: xs[0] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells(BUNKER_W) },
-    { x: xs[1] - Math.floor(CENTER_BUNKER_W / 2), y, width: CENTER_BUNKER_W, height: BUNKER_H, cells: makeCells(CENTER_BUNKER_W) },
+    { x: Math.floor(tileCount / 2 - CENTER_BUNKER_W / 2), y, width: CENTER_BUNKER_W, height: BUNKER_H, cells: makeCells(CENTER_BUNKER_W) },
     { x: xs[2] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells(BUNKER_W) }
   ];
 }
