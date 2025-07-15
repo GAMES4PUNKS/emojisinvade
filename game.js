@@ -104,8 +104,9 @@ function getBunkerY() {
   return Math.round(previousY + 0.4 * (bottomY - previousY)); 
 }
 function getBunkerXs() { 
+  // LEFT: moved 2 cells left, CENTER/RIGHT unchanged
   return [
-    Math.round(tileCount * 1 / 6),
+    Math.round(tileCount * 1 / 6) - 2, // moved 2 cells left
     Math.round(tileCount * 1 / 2),
     Math.round(tileCount * 5 / 6)
   ]; 
