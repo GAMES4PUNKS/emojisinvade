@@ -74,7 +74,7 @@ const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
 const spacemanSound = new Audio('spaceman.mp3');
 const rocketSound = new Audio('rocket.mp3');
-const satelliteSound = new Audio('satellite.mp3'); // New: satellite sound
+const satelliteSound = new Audio('satellite.mp3');
 
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
@@ -97,7 +97,7 @@ const shitImg = new Image();
 shitImg.src = 'BASE.png';
 // BUNKERS
 const BUNKER_W = 3, BUNKER_H = 3;
-const CENTER_BUNKER_W = 5; // Center bunker is 5 cells wide
+const CENTER_BUNKER_W = 5;
 
 function getBunkerCellHp() { return Math.max(1, 5 - bunkerLevel * 0.05); }
 function getBunkerY() { 
@@ -106,9 +106,8 @@ function getBunkerY() {
   return Math.round(previousY + 0.4 * (bottomY - previousY)); 
 }
 function getBunkerXs() { 
-  // LEFT: moved 2 cells left, CENTER/RIGHT unchanged
   return [
-    Math.round(tileCount * 1 / 6) - 2, // moved 2 cells left
+    Math.round(tileCount * 1 / 6) - 2,
     Math.round(tileCount * 1 / 2),
     Math.round(tileCount * 5 / 6)
   ]; 
@@ -155,7 +154,6 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-// INVADER GRID WITH 1 CELL GAP
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 10; row++) {
@@ -166,7 +164,7 @@ function spawnInvaderGrid() {
     }
     for (let col = 0; col < 5; col++) {
       invaders.push({
-        x: col * 2 + 2, // 1 cell gap between invaders horizontally
+        x: col * 2 + 2,
         y: row + 1,
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
@@ -258,6 +256,7 @@ function maybeSpawnBonusEmoji() {
   }
 }
 
+// --- UFO BOMB LOGIC CHANGE ---
 function updateBonusEmoji() {
   if (!bonusEmoji) return;
   bonusEmoji.progress += bonusEmoji.speed;
@@ -265,7 +264,11 @@ function updateBonusEmoji() {
     bonusEmoji.x += bonusEmoji.dir;
     bonusEmoji.progress = 0;
   }
-  if (Math.random() < ufoBombDropChance * 0.5) {
+  // Only group2 UFOs drop bombs, drop rate is halved
+  if (
+    group2.includes(bonusEmoji.emoji) &&
+    Math.random() < (ufoBombDropChance * 0.25)
+  ) {
     bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 });
     playUfoBombSound();
   }
@@ -356,7 +359,6 @@ function gameLoop() {
     shooting = false;
   }
 
-  // BUNKER CELL COLLISION LOGIC (bullets)
   let bulletsAfter = [];
   for (let b of bullets) {
     let hit = false;
@@ -366,7 +368,7 @@ function gameLoop() {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && Math.round(b.x) === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
-            if (cell.hp === 0) playSatelliteSound(); // Play sound on cell destroyed
+            if (cell.hp === 0) playSatelliteSound();
             hit = true;
           }
         }
@@ -374,7 +376,6 @@ function gameLoop() {
   }
   bullets = bulletsAfter;
 
-  // BUNKER CELL COLLISION LOGIC (bombs)
   let bombsAfter = [];
   for (let b of bombs) {
     let hit = false;
@@ -384,7 +385,7 @@ function gameLoop() {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && b.x === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
-            if (cell.hp === 0) playSatelliteSound(); // Play sound on cell destroyed
+            if (cell.hp === 0) playSatelliteSound();
             hit = true;
           }
         }
