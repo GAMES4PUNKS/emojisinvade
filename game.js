@@ -65,6 +65,8 @@ const gameOverSound1 = new Audio('gameover.mp3');
 const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
 const spacemanSound = new Audio('spaceman.mp3');
+const rocketSound = new Audio('rocket.mp3'); // <-- Added for rocket.mp3
+
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
 }
@@ -79,7 +81,7 @@ function playLifeLost1Sound() { if (!gameSoundsMuted) try { lifeLost1Sound.curre
 function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.currentTime = 0; lifeLost2Sound.play(); } catch (e) {} }
 function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
-function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound].forEach(a => a.volume = v); }
+function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, rocketSound].forEach(a => a.volume = v); }
 
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
@@ -435,10 +437,14 @@ function gameLoop() {
   bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), b.emoji, true));
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
 
+  // Play rocket.mp3 when all invaders have been killed and game starts new level
   if (invaders.length === 0) {
     invaderSpeed = Math.max(1, invaderSpeed - 0.5);
     bombDropSpeed = Math.min(2, bombDropSpeed + 0.2);
     bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
+
+    try { rocketSound.currentTime = 0; rocketSound.play(); } catch(e) {}
+
     spawnInvaderGrid();
     advanceLevel();
   }
