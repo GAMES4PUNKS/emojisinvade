@@ -48,8 +48,11 @@ let invaderDir = 1;
 let invaderSpeed = 40;
 let invaderTick = 0;
 let bulletCooldown = 0;
+
+// Unified projectile speed
 let bombDropSpeed = 0.33;
 let bulletTravelSpeed = 0.33;
+
 let ufoSlowFactor = 0.33;
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
@@ -74,7 +77,7 @@ const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
 const spacemanSound = new Audio('spaceman.mp3');
 const rocketSound = new Audio('rocket.mp3');
-const satelliteSound = new Audio('satellite.mp3'); // New: satellite sound
+const satelliteSound = new Audio('satellite.mp3'); // Play when bunker cell destroyed
 
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
@@ -398,6 +401,7 @@ function gameLoop() {
   }
   bombs = bombsAfter;
 
+  // Move bullets and bombs using unified speed
   bullets.forEach(b => { b.vy = (b.vy || 0) + bulletTravelSpeed; if (b.vy >= 1) { b.y -= Math.floor(b.vy); b.vy = b.vy % 1; } });
   bullets = bullets.filter(b => b.y >= 0);
   bombs.forEach(b => { b.vy = (b.vy || 0) + bombDropSpeed; if (b.vy >= 1) { b.y += Math.floor(b.vy); b.vy = b.vy % 1; } });
@@ -482,9 +486,9 @@ function gameLoop() {
 
   if (invaders.length === 0) {
     invaderSpeed = Math.max(1, invaderSpeed - 0.5);
-    bombDropSpeed = Math.min(2, bombDropSpeed + 0.2);
-    bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
-
+    // BOMB & BULLET SPEEDS INCREASE BY 0.5% PER LEVEL
+    bombDropSpeed *= 1.005;
+    bulletTravelSpeed = bombDropSpeed;
     try { rocketSound.currentTime = 0; rocketSound.play(); } catch(e) {}
 
     spawnInvaderGrid();
@@ -499,6 +503,9 @@ function advanceLevel() {
   ufoBombDropChance += 0.0125;
   bunkerLevel++;
   resetBunkers();
+  // Increase all projectile speeds by 0.5% per level
+  bombDropSpeed *= 1.005;
+  bulletTravelSpeed = bombDropSpeed;
 }
 
 function loseLifeOrGameOver(bombHit = false) {
