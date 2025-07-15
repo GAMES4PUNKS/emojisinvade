@@ -65,6 +65,8 @@ const gameOverSound1 = new Audio('gameover.mp3');
 const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
 const spacemanSound = new Audio('spaceman.mp3');
+const spaceshipSound = new Audio('spaceship.mp3'); // Spaceship sound for column clear
+
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
 }
@@ -79,7 +81,8 @@ function playLifeLost1Sound() { if (!gameSoundsMuted) try { lifeLost1Sound.curre
 function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.currentTime = 0; lifeLost2Sound.play(); } catch (e) {} }
 function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
-function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound].forEach(a => a.volume = v); }
+function playSpaceshipSound() { if (!gameSoundsMuted) try { spaceshipSound.currentTime = 0; spaceshipSound.play(); } catch (e) {} }
+function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, spaceshipSound].forEach(a => a.volume = v); }
 
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
@@ -134,6 +137,7 @@ function spawnInvaderGrid() {
       });
     }
   }
+  emptiedColumns = new Set(); // Reset on new wave
 }
 
 let left = false, right = false, shooting = false;
@@ -179,6 +183,8 @@ let bonusEmoji = null;
 let bonusTimer = 0;
 let bonusSpeedupHits = 0;
 let firstBonusSpawned = false;
+
+let emptiedColumns = new Set(); // For spaceship.mp3 on column clear
 
 function getRandomUFOEmoji() {
   const totalWeight = 1.75 + 1;
@@ -235,6 +241,28 @@ function updateBonusEmoji() {
     try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
     bonusEmoji = null;
   }
+}
+
+function drawNegativeBomb(x, y, size = gridSize) {
+  // Draw bomb body (white instead of black)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x * gridSize + gridSize/2, y * gridSize + gridSize/2, size/2.4, 0, Math.PI * 2);
+  ctx.fillStyle = "white"; // Inverted from black
+  ctx.fill();
+  // Draw fuse (black instead of white)
+  ctx.beginPath();
+  ctx.moveTo(x * gridSize + gridSize/2, y * gridSize + gridSize/2 - size/2.4);
+  ctx.lineTo(x * gridSize + gridSize/2, y * gridSize + gridSize/2 - size/1.3);
+  ctx.strokeStyle = "black"; // Inverted from light color
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Draw spark (black dot)
+  ctx.beginPath();
+  ctx.arc(x * gridSize + gridSize/2, y * gridSize + gridSize/2 - size/1.3, size/9, 0, Math.PI * 2);
+  ctx.fillStyle = "black";
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawBonusEmoji() { if (!bonusEmoji) return; let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress; drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize); }
@@ -423,6 +451,15 @@ function gameLoop() {
     return true;
   });
 
+  // Play spaceship.mp3 if a column is cleared
+  let currentColumns = new Set(invaders.map(inv => Math.round(inv.x)));
+  for (let col = 0; col < tileCount; col++) {
+    if (!currentColumns.has(col) && !emptiedColumns.has(col)) {
+      playSpaceshipSound();
+      emptiedColumns.add(col);
+    }
+  }
+
   maybeSpawnBonusEmoji();
   updateBonusEmoji();
   drawBonusEmoji();
@@ -432,7 +469,13 @@ function gameLoop() {
 
   drawEmoji(player.x, player.y, "💩");
   bullets.forEach(b => drawEmoji(b.x, Math.round(b.y), "💥"));
-  bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), b.emoji, true));
+  bombs.forEach(b => {
+    if (b.emoji === "💣") {
+      drawNegativeBomb(b.x, Math.round(b.y));
+    } else {
+      drawEmoji(b.x, Math.round(b.y), b.emoji, true);
+    }
+  });
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
 
   if (invaders.length === 0) {
