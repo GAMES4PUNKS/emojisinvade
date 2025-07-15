@@ -1,7 +1,4 @@
-// Emoji Invaders Game - UFO speed scales with reward value
-// If player hits any top 25 highest-rewarded UFO, all invaders refresh
-// Radio and Login buttons now work!
-// Game starts ONLY after Play/Pause button is clicked, or PLAY overlay is clicked, or Enter/Space is pressed.
+// === EMOJIS INVADERS (with all requested changes) ===
 
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
@@ -19,7 +16,6 @@ const emojiBank = [
   "🌦️","🌧️","⛈️","🌩️","🌨️","❄️","☃️","⛄️","🌈",
   "❤️","🧡","💛","💚","💙","💜","🤍","🤎","💔"
 ];
-
 const group1 = emojiBank.slice(0, 54);    // lowest points
 const group2 = emojiBank.slice(54, 108);  // highest points
 
@@ -27,6 +23,7 @@ const emojiBonusScores = {};
 for (let i = 0; i < emojiBank.length; i++)
   emojiBonusScores[emojiBank[i]] = 1000 + i * 50;
 
+// === CANVAS & GRID ===
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = 400;
@@ -34,6 +31,7 @@ canvas.height = 400;
 const gridSize = 20;
 const tileCount = canvas.width / gridSize;
 
+// === GAME STATE ===
 let score = 0;
 let highScore = Number(localStorage.getItem("high_score") || 0);
 const player = { x: 10, y: tileCount - 1, speedCounter: 0 };
@@ -48,11 +46,16 @@ let bulletCooldown = 0;
 let bombDropSpeed = 0.33;
 let bulletTravelSpeed = 0.33;
 let ufoSlowFactor = 0.33;
+let isPaused = true; // Start paused until Play is clicked!
+let reqId = null;
+let gameOverState = false;
+
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
 const overlay = document.getElementById("overlay");
 const gameOverOverlay = document.getElementById("gameOverOverlay");
 
+// === SOUNDS ===
 let gameSoundsMuted = false;
 const fireSounds = [
   new Audio('fire.mp3'), new Audio('fire2.mp3'), new Audio('fire3.mp3'),
@@ -69,6 +72,11 @@ const lifeLost2Sound = new Audio('lifelost2.mp3');
 const gameOverSound1 = new Audio('gameover.mp3');
 const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
+const spacemanSound = new Audio('spaceman.mp3'); // 1. new sound
+const spaceshipSound = new Audio('spaceship.mp3');
+const rocketSound = new Audio('rocket.mp3'); // 7. new sound
+const satelliteSound = new Audio('satellite.mp3'); // 8. new sound
+
 function playRandomFireSound() {
   if (gameSoundsMuted) return;
   const idx = Math.floor(Math.random() * fireSounds.length);
@@ -80,23 +88,50 @@ function playLifeLost1Sound() { if (!gameSoundsMuted) try { lifeLost1Sound.curre
 function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.currentTime = 0; lifeLost2Sound.play(); } catch (e) {} }
 function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
-function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound].forEach(a => a.volume = v); }
+function playSpacemanSound() { if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {} }
+function playSpaceshipSound() { if (!gameSoundsMuted) try { spaceshipSound.currentTime = 0; spaceshipSound.play(); } catch (e) {} }
+function playRocketSound() { if (!gameSoundsMuted) try { rocketSound.currentTime = 0; rocketSound.play(); } catch (e) {} }
+function playSatelliteSound() { if (!gameSoundsMuted) try { satelliteSound.currentTime = 0; satelliteSound.play(); } catch (e) {} }
+function updateGameSoundMute() {
+  const v = gameSoundsMuted ? 0 : 1;
+  [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, spaceshipSound, rocketSound, satelliteSound].forEach(a => a.volume = v);
+}
 
+// === BUNKERS ===
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
-const BUNKER_W = 3, BUNKER_H = 3;
+const BUNKER_W_LEFT = 3, BUNKER_W_MID = 5, BUNKER_W_RIGHT = 3, BUNKER_H = 3;
 let bunkerLevel = 0;
 function getBunkerCellHp() { return Math.max(1, 5 - bunkerLevel * 0.05); }
-function getBunkerY() { const previousY = tileCount - 5; const bottomY = tileCount - 2; return Math.round(previousY + 0.4 * (bottomY - previousY)); }
-function getBunkerXs() { return [Math.round(tileCount * 1 / 6), Math.round(tileCount * 1 / 2), Math.round(tileCount * 5 / 6)]; }
-function makeCells() { return Array.from({length: BUNKER_H}, () => Array.from({length: BUNKER_W}, () => ({ hp: getBunkerCellHp() }))); }
-function buildBunkers() { const y = getBunkerY(); const xs = getBunkerXs(); return [ { x: xs[0] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() }, { x: xs[1] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() }, { x: xs[2] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() } ]; }
+function getBunkerY() {
+  const previousY = tileCount - 5;
+  const bottomY = tileCount - 2;
+  return Math.round(previousY + 0.4 * (bottomY - previousY));
+}
+function getBunkerXs() {
+  // 5. Make left/right bunkers 1 cell off the canvas
+  // Left: x=-1 (columns -1,0,1; only 0,1 visible)
+  // Mid: centered
+  // Right: x=tileCount-3 (columns 18,19,20; only 19,20 visible)
+  return [-1, Math.floor(tileCount/2 - BUNKER_W_MID/2), tileCount - BUNKER_W_RIGHT];
+}
+function makeCells(w) { return Array.from({length: BUNKER_H}, () => Array.from({length: w}, () => ({ hp: getBunkerCellHp() }))); }
+function buildBunkers() {
+  const y = getBunkerY();
+  const xs = getBunkerXs();
+  return [
+    { x: xs[0], y, width: BUNKER_W_LEFT, height: BUNKER_H, cells: makeCells(BUNKER_W_LEFT) },
+    { x: xs[1], y, width: BUNKER_W_MID, height: BUNKER_H, cells: makeCells(BUNKER_W_MID) },
+    { x: xs[2], y, width: BUNKER_W_RIGHT, height: BUNKER_H, cells: makeCells(BUNKER_W_RIGHT) }
+  ];
+}
 let bunkers = buildBunkers();
 function drawBunker(bunker) {
   for (let row = 0; row < bunker.height; row++)
     for (let col = 0; col < bunker.width; col++) {
       const cell = bunker.cells[row][col];
-      if (cell && cell.hp > 0) {
+      // Only draw visible grid cells
+      if (cell && cell.hp > 0 && bunker.x + col >= 0 && bunker.x + col < tileCount) {
         ctx.save();
         ctx.globalAlpha = Math.max(0.25, cell.hp / getBunkerCellHp());
         ctx.drawImage(shitImg, (bunker.x + col) * gridSize, (bunker.y + row) * gridSize, gridSize, gridSize);
@@ -106,6 +141,7 @@ function drawBunker(bunker) {
 }
 function resetBunkers() { bunkers = buildBunkers(); }
 
+// === HUD ===
 function updateHUD() {
   scoreDisplay.textContent = `Score: ${score}`;
   highScoreDisplay.textContent = `High Score: ${highScore}`;
@@ -118,17 +154,19 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
+// === INVADERS ===
+// 4. 10 wide x 8 deep
 function spawnInvaderGrid() {
   invaders = [];
-  for (let row = 0; row < 10; row++) {
+  for (let row = 0; row < 8; row++) {
     const rowEmojis = [];
-    while (rowEmojis.length < 5) {
+    while (rowEmojis.length < 10) {
       const emoji = emojiBank[Math.floor(Math.random() * emojiBank.length)];
       if (!rowEmojis.includes(emoji)) rowEmojis.push(emoji);
     }
-    for (let col = 0; col < 5; col++) {
+    for (let col = 0; col < 10; col++) {
       invaders.push({
-        x: col * 2 + 2,
+        x: col + 5,
         y: row + 1,
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
@@ -137,6 +175,7 @@ function spawnInvaderGrid() {
   }
 }
 
+// === CONTROLS ===
 let left = false, right = false, shooting = false;
 let firePressed = false;
 document.addEventListener('keydown', e => {
@@ -151,36 +190,12 @@ document.addEventListener('keyup', e => {
   if (e.key === ' ' || e.key === 'z' || e.key === 'j') { shooting = false; firePressed = false; }
 });
 
-function resetGame() {
-  score = 0;
-  bullets = [];
-  bombs = [];
-  player.x = 10;
-  player.y = tileCount - 1;
-  player.speedCounter = 0;
-  playerLives = 3;
-  invaderSpeed = 40;
-  bombDropSpeed = 0.33;
-  bulletTravelSpeed = 0.33;
-  ufoSlowFactor = 0.33;
-  ufoBombDropChance = 0.0125;
-  bunkerLevel = 0;
-  resetBunkers();
-  spawnInvaderGrid();
-  updateHUD();
-}
-
-let isPaused = true; // Start paused until Play is clicked!
-let reqId = null;
-let gameOverState = false;
-
+// === UFO LOGIC ===
 let lastBonusMissFrame = -1000;
-let ufoBombDropChance = 0.0125;
-let bonusEmoji = null;
 let bonusTimer = 0;
 let bonusSpeedupHits = 0;
-let firstBonusSpawned = false;
 
+// 3. Only 50% UFOs can drop bombs, and bomb drop chance is extremely low
 function getRandomUFOEmoji() {
   const totalWeight = 1.75 + 1;
   const rand = Math.random();
@@ -192,7 +207,6 @@ function getRandomUFOEmoji() {
     return group2[idx];
   }
 }
-
 function getUfoSpeed(emoji) {
   const maxSpeed = 0.15 * ufoSlowFactor;
   const minSpeed = 0.05 * ufoSlowFactor;
@@ -200,14 +214,26 @@ function getUfoSpeed(emoji) {
   if (idx === emojiBank.length - 1) return maxSpeed;
   return minSpeed + ((maxSpeed - minSpeed) * idx / (emojiBank.length - 1));
 }
-
 function maybeSpawnBonusEmoji() {
   if (bonusEmoji !== null) return;
   if (Math.random() < 1/240) {
     const fromLeft = Math.random() < 0.5;
     const emoji = getRandomUFOEmoji();
     const speed = getUfoSpeed(emoji);
-    bonusEmoji = { emoji, x: fromLeft ? 0 : tileCount - 1, y: 0, dir: fromLeft ? 1 : -1, speed: speed, progress: 0, bankIndex: emojiBank.indexOf(emoji) };
+    const canDropBomb = Math.random() < 0.5;
+    bonusEmoji = {
+      emoji,
+      x: fromLeft ? 0 : tileCount - 1,
+      y: 0,
+      dir: fromLeft ? 1 : -1,
+      speed: speed,
+      progress: 0,
+      bankIndex: emojiBank.indexOf(emoji),
+      canDropBomb: canDropBomb,
+      bombDropped: false
+    };
+    // 7. Play rocket.mp3 for group 2 UFOs, in addition to ufo.mp3
+    if (group2.includes(emoji)) playRocketSound();
     try { if (!gameSoundsMuted) { ufoSound.currentTime = 0; ufoSound.play(); } } catch (e) {}
   }
 }
@@ -215,7 +241,20 @@ function updateBonusEmoji() {
   if (!bonusEmoji) return;
   bonusEmoji.progress += bonusEmoji.speed;
   if (bonusEmoji.progress >= 1) { bonusEmoji.x += bonusEmoji.dir; bonusEmoji.progress = 0; }
-  if (Math.random() < ufoBombDropChance) { bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 }); playUfoBombSound(); }
+  // Only drop bomb if canDropBomb and not yet dropped, and VERY rare chance
+  if (bonusEmoji.canDropBomb && !bonusEmoji.bombDropped) {
+    if (Math.random() < 0.0001) {
+      bombs.push({
+        x: bonusEmoji.x,
+        y: bonusEmoji.y + 1,
+        emoji: "💣",
+        vy: 0,
+        fromUfo: true
+      });
+      playUfoBombSound();
+      bonusEmoji.bombDropped = true;
+    }
+  }
   if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) { try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {} bonusEmoji = null; }
 }
 function drawBonusEmoji() { if (!bonusEmoji) return; let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress; drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize); }
@@ -276,6 +315,30 @@ function drawEmoji(x, y, emoji, flicker = false, customSize = null, phase = 0) {
   ctx.globalAlpha = 1;
 }
 
+// === INVADER COLUMNS: SPACESHIP SOUND ===
+let prevColumnsAlive = Array(10).fill(true);
+function handleColumnDestructionSound() {
+  let columnsAlive = Array(10).fill(false);
+  invaders.forEach(inv => {
+    if (inv.y >= 1 && inv.x >= 5 && inv.x < 15) columnsAlive[inv.x - 5] = true;
+  });
+  for (let c = 0; c < 10; c++) {
+    if (prevColumnsAlive[c] && !columnsAlive[c]) {
+      playSpaceshipSound();
+    }
+  }
+  prevColumnsAlive = columnsAlive.slice();
+}
+
+// === BUNKER CELL DESTRUCTION: SATELLITE SOUND ===
+function bunkerCellHit(cell) {
+  if (cell.hp > 0) {
+    cell.hp--;
+    if (cell.hp === 0) playSatelliteSound();
+  }
+}
+
+// === MAIN GAME LOOP ===
 function gameLoop() {
   if (isPaused) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -308,7 +371,7 @@ function gameLoop() {
         for (let col = 0; col < bunker.width; col++) {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && Math.round(b.x) === bunker.x + col && Math.round(b.y) === bunker.y + row) {
-            cell.hp--;
+            bunkerCellHit(cell);
             hit = true;
           }
         }
@@ -325,15 +388,21 @@ function gameLoop() {
         for (let col = 0; col < bunker.width; col++) {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && b.x === bunker.x + col && Math.round(b.y) === bunker.y + row) {
-            cell.hp--;
+            bunkerCellHit(cell);
             hit = true;
           }
         }
     if (hit) continue;
-    if (b.x === player.x && Math.round(b.y) === player.y) {
+    if (b.fromUfo && Math.abs(b.x - player.x) < 0.5 && Math.abs(b.y - player.y) < 0.5) {
+      score = Math.floor(score * 0.5);
       loseLifeOrGameOver(true);
       try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
-      return;
+      continue;
+    }
+    if (!b.fromUfo && Math.abs(b.x - player.x) < 0.5 && Math.abs(b.y - player.y) < 0.5) {
+      loseLifeOrGameOver(true);
+      try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {}
+      continue;
     }
     bombsAfter.push(b);
   }
@@ -356,6 +425,9 @@ function gameLoop() {
     invaderTick = 0;
   }
 
+  // handle invader column destruction sound!
+  handleColumnDestructionSound();
+
   let bunkerRows = new Set();
   for (const bunker of bunkers)
     for (let row = 0; row < bunker.height; row++)
@@ -370,7 +442,7 @@ function gameLoop() {
         if (bunker.y + row === invaders[i].y)
           for (let col = 0; col < bunker.width; col++) {
             const cell = bunker.cells[row][col];
-            if (cell && cell.hp > 0) cell.hp--;
+            if (cell && cell.hp > 0) bunkerCellHit(cell);
           }
       invaderAtBunker = true;
       break;
@@ -424,6 +496,7 @@ function gameLoop() {
     bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
     spawnInvaderGrid();
     advanceLevel();
+    prevColumnsAlive = Array(10).fill(true);
   }
 
   updateHUD();
@@ -431,13 +504,14 @@ function gameLoop() {
 }
 
 function advanceLevel() {
-  ufoBombDropChance += 0.0125;
   bunkerLevel++;
   resetBunkers();
 }
 
+// 1. Add spaceman.mp3 on every life lost, overlays with other lose-life sounds
 function loseLifeOrGameOver(bombHit = false) {
   playerLives--;
+  playSpacemanSound();
   if (bombHit) {
     score = Math.floor(score * 0.5);
     updateHUD();
@@ -464,6 +538,7 @@ function loseLifeOrGameOver(bombHit = false) {
   }
 }
 
+// 2. Only restart game on Enter key or clicking/tapping PLAY NOW popup
 function manualRestart() {
   if (!gameOverState) return;
   gameOverOverlay.style.display = 'none';
@@ -472,10 +547,60 @@ function manualRestart() {
   resetGame();
   reqId = requestAnimationFrame(gameLoop);
 }
-function togglePause() {
-  if (isPaused && !gameOverState) { isPaused = false; overlay.style.display = "none"; reqId = requestAnimationFrame(gameLoop); }
-  else if (!gameOverState) { isPaused = true; overlay.textContent = "PAUSED"; overlay.style.display = "block"; if (reqId) cancelAnimationFrame(reqId); }
+canvas.addEventListener('mousedown', function(e){
+  if (gameOverState) manualRestart();
+});
+canvas.addEventListener('touchstart', function(e){
+  if (gameOverState) manualRestart();
+});
+window.addEventListener('keydown', function(e) {
+  if (gameOverState && (e.key === "Enter")) manualRestart();
+});
+
+// === GAME START LOGIC ===
+let initialGameStarted = false;
+function showStartOverlay() {
+  overlay.textContent = "▶ PLAY";
+  overlay.style.display = "block";
+  overlay.style.cursor = "pointer";
+  isPaused = true;
+  gameOverState = false;
+  if (reqId) cancelAnimationFrame(reqId);
 }
+function startMainGame() {
+  if (!initialGameStarted) {
+    initialGameStarted = true;
+    overlay.style.display = "none";
+    overlay.style.cursor = "";
+    isPaused = false;
+    reqId = requestAnimationFrame(gameLoop);
+    canvas.focus();
+  }
+}
+document.getElementById("pauseBtn").onclick = () => {
+  if (!initialGameStarted) {
+    startMainGame();
+  } else {
+    if (isPaused && !gameOverState) { isPaused = false; overlay.style.display = "none"; reqId = requestAnimationFrame(gameLoop); }
+    else if (!gameOverState) { isPaused = true; overlay.textContent = "PAUSED"; overlay.style.display = "block"; if (reqId) cancelAnimationFrame(reqId); }
+    canvas.focus();
+  }
+};
+overlay.onclick = () => {
+  if (!initialGameStarted && overlay.style.display === "block") {
+    startMainGame();
+  }
+  if (gameOverState) manualRestart();
+};
+window.addEventListener('keydown', function(e) {
+  if (!initialGameStarted && overlay.style.display === "block" && (e.key === "Enter" || e.key === " ")) {
+    startMainGame();
+  }
+  if (e.key === "Escape") {
+    const popup = document.getElementById("loginPopup");
+    if (popup && popup.style.display === "block") { popup.style.display = "none"; canvas.focus(); }
+  }
+});
 
 const radioBtn = document.getElementById('toggleRadio');
 const radioAudio = document.getElementById('radioStream');
@@ -504,55 +629,9 @@ closeLoginPopup.onclick = function() {
 
 document.getElementById("muteBtn").onclick = () => { gameSoundsMuted = !gameSoundsMuted; updateGameSoundMute(); document.getElementById("muteBtn").textContent = gameSoundsMuted ? "🔇" : "🔊"; canvas.focus(); };
 document.getElementById("speedSelect").onchange = (e) => { invaderSpeed = Number(e.target.value); canvas.focus(); };
-canvas.addEventListener('mousedown', manualRestart);
-canvas.addEventListener('touchstart', manualRestart);
 
-// --- GAME START LOGIC ---
-// Only start game after Play/Pause button pressed or PLAY overlay is clicked or Enter/Space is pressed
-let initialGameStarted = false;
-function showStartOverlay() {
-  overlay.textContent = "▶ PLAY";
-  overlay.style.display = "block";
-  overlay.style.cursor = "pointer";
-  isPaused = true;
-  gameOverState = false;
-  if (reqId) cancelAnimationFrame(reqId);
-}
-function startMainGame() {
-  if (!initialGameStarted) {
-    initialGameStarted = true;
-    overlay.style.display = "none";
-    overlay.style.cursor = "";
-    isPaused = false;
-    reqId = requestAnimationFrame(gameLoop);
-    canvas.focus();
-  }
-}
-document.getElementById("pauseBtn").onclick = () => {
-  if (!initialGameStarted) {
-    startMainGame();
-  } else {
-    togglePause();
-    canvas.focus();
-  }
-};
-overlay.onclick = () => {
-  if (!initialGameStarted && overlay.style.display === "block") {
-    startMainGame();
-  }
-};
-window.addEventListener('keydown', function(e) {
-  if (!initialGameStarted && overlay.style.display === "block" && (e.key === "Enter" || e.key === " ")) {
-    startMainGame();
-  }
-  if (e.key === "Escape") {
-    const popup = document.getElementById("loginPopup");
-    if (popup && popup.style.display === "block") { popup.style.display = "none"; canvas.focus(); }
-  }
-  if (gameOverState && (e.key === "Enter" || e.key === " ")) manualRestart();
-});
 window.addEventListener('DOMContentLoaded', () => {
   showStartOverlay();
 });
 updateHUD();
-// DO NOT CALL gameLoop() HERE! Game starts after Play button pressed.
+// (DO NOT call gameLoop() here!)
