@@ -81,13 +81,26 @@ function playLifeLost1Sound() { if (!gameSoundsMuted) try { lifeLost1Sound.curre
 function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.currentTime = 0; lifeLost2Sound.play(); } catch (e) {} }
 function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
+
+let userHasInteracted = false;
+function enableSoundOnUserGesture() {
+  if (!userHasInteracted) {
+    userHasInteracted = true;
+    // Resume context if needed (for Chrome/Firefox auto-play restrictions)
+    if (typeof spaceshipSound !== "undefined" && spaceshipSound.context && spaceshipSound.context.state === "suspended") {
+      spaceshipSound.context.resume();
+    }
+  }
+}
+document.addEventListener('keydown', enableSoundOnUserGesture);
+document.addEventListener('mousedown', enableSoundOnUserGesture);
+
 function playSpaceshipSound() {
-  if (!gameSoundsMuted) {
-    // This logic ensures sound is reliably triggered and replayed
+  if (!gameSoundsMuted && userHasInteracted) {
     try {
       spaceshipSound.pause();
       spaceshipSound.currentTime = 0;
-      spaceshipSound.play().catch(e => {});
+      spaceshipSound.play();
     } catch (e) {}
   }
 }
@@ -129,9 +142,8 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-// --- spaceship.mp3 robust column clear tracker ---
-let emptiedColumns = new Set();
-let invaderStartColumns = new Set();
+let emptiedColumns = new Set(); // For spaceship.mp3 on column clear
+let invaderStartColumns = new Set(); // Track columns at wave start
 
 function spawnInvaderGrid() {
   invaders = [];
@@ -150,7 +162,7 @@ function spawnInvaderGrid() {
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
       });
-      invaderStartColumns.add(xVal);
+      invaderStartColumns.add(xVal); // Track all columns used at spawn
     }
   }
   emptiedColumns = new Set(); // Reset on new wave
