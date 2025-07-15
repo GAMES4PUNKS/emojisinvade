@@ -48,8 +48,10 @@ let invaderDir = 1;
 let invaderSpeed = 40;
 let invaderTick = 0;
 let bulletCooldown = 0;
-let bombDropSpeed = 0.33;
-let bulletTravelSpeed = 0.33;
+
+// Use SAME speed for bombs (invaders/ufo) and bullets (player)
+let projectileSpeed = 0.33;
+
 let ufoSlowFactor = 0.33;
 const scoreDisplay = document.getElementById("scoreDisplay");
 const highScoreDisplay = document.getElementById("highScoreDisplay");
@@ -74,7 +76,7 @@ const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
 const spacemanSound = new Audio('spaceman.mp3');
 const rocketSound = new Audio('rocket.mp3');
-const satelliteSound = new Audio('satellite.mp3'); // New: satellite sound
+const satelliteSound = new Audio('satellite.mp3'); // satellite.mp3 used for bunker cell destroy
 
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
@@ -90,7 +92,16 @@ function playLifeLost1Sound() { if (!gameSoundsMuted) try { lifeLost1Sound.curre
 function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.currentTime = 0; lifeLost2Sound.play(); } catch (e) {} }
 function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
-function playSatelliteSound() { if (!gameSoundsMuted) try { satelliteSound.currentTime = 0; satelliteSound.play(); } catch (e) {} }
+// MP3 bunker cell destroy - always pause and reset before play!
+function playSatelliteSound() {
+  if (!gameSoundsMuted) {
+    try {
+      satelliteSound.pause();
+      satelliteSound.currentTime = 0;
+      satelliteSound.play();
+    } catch (e) {}
+  }
+}
 function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, rocketSound, satelliteSound].forEach(a => a.volume = v); }
 
 const shitImg = new Image();
@@ -198,8 +209,7 @@ function resetGame() {
   player.speedCounter = 0;
   playerLives = 3;
   invaderSpeed = 40;
-  bombDropSpeed = 0.33;
-  bulletTravelSpeed = 0.33;
+  projectileSpeed = 0.33;
   ufoSlowFactor = 0.33;
   ufoBombDropChance = 0.0125;
   bunkerLevel = 0;
@@ -366,7 +376,7 @@ function gameLoop() {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && Math.round(b.x) === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
-            if (cell.hp === 0) playSatelliteSound(); // Play sound on cell destroyed
+            if (cell.hp === 0) playSatelliteSound();
             hit = true;
           }
         }
@@ -384,7 +394,7 @@ function gameLoop() {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && b.x === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
-            if (cell.hp === 0) playSatelliteSound(); // Play sound on cell destroyed
+            if (cell.hp === 0) playSatelliteSound();
             hit = true;
           }
         }
@@ -398,9 +408,10 @@ function gameLoop() {
   }
   bombs = bombsAfter;
 
-  bullets.forEach(b => { b.vy = (b.vy || 0) + bulletTravelSpeed; if (b.vy >= 1) { b.y -= Math.floor(b.vy); b.vy = b.vy % 1; } });
+  // Move bullets and bombs using unified speed
+  bullets.forEach(b => { b.vy = (b.vy || 0) + projectileSpeed; if (b.vy >= 1) { b.y -= Math.floor(b.vy); b.vy = b.vy % 1; } });
   bullets = bullets.filter(b => b.y >= 0);
-  bombs.forEach(b => { b.vy = (b.vy || 0) + bombDropSpeed; if (b.vy >= 1) { b.y += Math.floor(b.vy); b.vy = b.vy % 1; } });
+  bombs.forEach(b => { b.vy = (b.vy || 0) + projectileSpeed; if (b.vy >= 1) { b.y += Math.floor(b.vy); b.vy = b.vy % 1; } });
   bombs = bombs.filter(b => b.y < tileCount);
 
   invaderTick++;
@@ -482,9 +493,7 @@ function gameLoop() {
 
   if (invaders.length === 0) {
     invaderSpeed = Math.max(1, invaderSpeed - 0.5);
-    bombDropSpeed = Math.min(2, bombDropSpeed + 0.2);
-    bulletTravelSpeed = Math.min(2, bulletTravelSpeed + 0.2);
-
+    projectileSpeed *= 1.005; // Increase all projectile speeds by 0.5%
     try { rocketSound.currentTime = 0; rocketSound.play(); } catch(e) {}
 
     spawnInvaderGrid();
@@ -499,6 +508,7 @@ function advanceLevel() {
   ufoBombDropChance += 0.0125;
   bunkerLevel++;
   resetBunkers();
+  projectileSpeed *= 1.005; // 0.5% speed increase per level
 }
 
 function loseLifeOrGameOver(bombHit = false) {
