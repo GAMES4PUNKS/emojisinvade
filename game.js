@@ -64,12 +64,10 @@ const lifeLost2Sound = new Audio('lifelost2.mp3');
 const gameOverSound1 = new Audio('gameover.mp3');
 const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
-// --- Overlay spaceman.mp3 with lose life sounds ---
 const spacemanSound = new Audio('spaceman.mp3');
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
 }
-
 function playRandomFireSound() {
   if (gameSoundsMuted) return;
   const idx = Math.floor(Math.random() * fireSounds.length);
@@ -300,7 +298,6 @@ function gameLoop() {
     shooting = false;
   }
 
-  // Bullets damage bunker cell
   let bulletsAfter = [];
   for (let b of bullets) {
     let hit = false;
@@ -317,7 +314,6 @@ function gameLoop() {
   }
   bullets = bulletsAfter;
 
-  // Bombs damage bunker cell and player
   let bombsAfter = [];
   for (let b of bombs) {
     let hit = false;
@@ -437,7 +433,6 @@ function advanceLevel() {
   resetBunkers();
 }
 
-// --- Play spaceman.mp3 every time player loses a life, overlaying with other sounds ---
 function loseLifeOrGameOver(bombHit = false) {
   playerLives--;
   playSpacemanSound();
@@ -467,6 +462,7 @@ function loseLifeOrGameOver(bombHit = false) {
   }
 }
 
+// --- Only allow restart by Enter key or PLAY NOW popup on canvas ---
 function manualRestart() {
   if (!gameOverState) return;
   gameOverOverlay.style.display = 'none';
@@ -475,6 +471,33 @@ function manualRestart() {
   resetGame();
   reqId = requestAnimationFrame(gameLoop);
 }
+
+// REMOVE these to prevent accidental restart by mouse/touch anywhere:
+// canvas.addEventListener('mousedown', manualRestart);
+// canvas.addEventListener('touchstart', manualRestart);
+
+// --- Only allow restart by Enter key or tapping PLAY NOW overlay ---
+overlay.onclick = () => {
+  if (!initialGameStarted && overlay.style.display === "block") {
+    startMainGame();
+  }
+  // Also allow restart from game over by clicking overlay (PLAY NOW)
+  if (gameOverState && overlay.style.display === "block") {
+    manualRestart();
+  }
+};
+window.addEventListener('keydown', function(e) {
+  if (!initialGameStarted && overlay.style.display === "block" && (e.key === "Enter" || e.key === " ")) {
+    startMainGame();
+  }
+  if (e.key === "Escape") {
+    const popup = document.getElementById("loginPopup");
+    if (popup && popup.style.display === "block") { popup.style.display = "none"; canvas.focus(); }
+  }
+  // Only allow restart if Enter key is pressed
+  if (gameOverState && e.key === "Enter") manualRestart();
+});
+
 function togglePause() {
   if (isPaused && !gameOverState) { isPaused = false; overlay.style.display = "none"; reqId = requestAnimationFrame(gameLoop); }
   else if (!gameOverState) { isPaused = true; overlay.textContent = "PAUSED"; overlay.style.display = "block"; if (reqId) cancelAnimationFrame(reqId); }
@@ -507,8 +530,6 @@ closeLoginPopup.onclick = function() {
 
 document.getElementById("muteBtn").onclick = () => { gameSoundsMuted = !gameSoundsMuted; updateGameSoundMute(); document.getElementById("muteBtn").textContent = gameSoundsMuted ? "🔇" : "🔊"; canvas.focus(); };
 document.getElementById("speedSelect").onchange = (e) => { invaderSpeed = Number(e.target.value); canvas.focus(); };
-canvas.addEventListener('mousedown', manualRestart);
-canvas.addEventListener('touchstart', manualRestart);
 
 let initialGameStarted = false;
 function showStartOverlay() {
@@ -537,22 +558,9 @@ document.getElementById("pauseBtn").onclick = () => {
     canvas.focus();
   }
 };
-overlay.onclick = () => {
-  if (!initialGameStarted && overlay.style.display === "block") {
-    startMainGame();
-  }
-};
-window.addEventListener('keydown', function(e) {
-  if (!initialGameStarted && overlay.style.display === "block" && (e.key === "Enter" || e.key === " ")) {
-    startMainGame();
-  }
-  if (e.key === "Escape") {
-    const popup = document.getElementById("loginPopup");
-    if (popup && popup.style.display === "block") { popup.style.display = "none"; canvas.focus(); }
-  }
-  if (gameOverState && (e.key === "Enter" || e.key === " ")) manualRestart();
-});
+
 window.addEventListener('DOMContentLoaded', () => {
   showStartOverlay();
 });
 updateHUD();
+// DO NOT CALL gameLoop() HERE! Game starts after Play button pressed.
