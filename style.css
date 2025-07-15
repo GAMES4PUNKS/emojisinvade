@@ -17,14 +17,14 @@ body {
   margin-bottom: 1rem;
 }
 canvas {
-  display: block;
-  margin: 0 auto;
-  background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
-  box-shadow: 0 0 20px #a020f0;
   width: 90vmin;
   height: 90vmin;
   max-width: 90vw;
   max-height: 90vw;
+  background: url('moshed-2021-11-29-0-39-58.gif') center/cover no-repeat;
+  box-shadow: 0 0 20px #a020f0;
+  margin-top: 1rem;
+  display: block;
 }
 #statusBarCombined {
   display: flex;
