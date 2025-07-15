@@ -65,7 +65,9 @@ const gameOverSound1 = new Audio('gameover.mp3');
 const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
 const spacemanSound = new Audio('spaceman.mp3');
-const spaceshipSound = new Audio('spaceship.mp3'); // Spaceship sound for column clear
+
+// Use the correct path for spaceship.mp3 (it is in repo root)
+const spaceshipSound = new Audio('spaceship.mp3');
 
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
@@ -82,26 +84,30 @@ function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.curre
 function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
 
+// --- Robust spaceship.mp3 user gesture unlock ---
 let userHasInteracted = false;
-function enableSoundOnUserGesture() {
+function unlockSoundOnGesture() {
   if (!userHasInteracted) {
     userHasInteracted = true;
-    // Resume context if needed (for Chrome/Firefox auto-play restrictions)
-    if (typeof spaceshipSound !== "undefined" && spaceshipSound.context && spaceshipSound.context.state === "suspended") {
-      spaceshipSound.context.resume();
-    }
+    spaceshipSound.muted = false;
   }
 }
-document.addEventListener('keydown', enableSoundOnUserGesture);
-document.addEventListener('mousedown', enableSoundOnUserGesture);
+document.addEventListener('keydown', unlockSoundOnGesture);
+document.addEventListener('mousedown', unlockSoundOnGesture);
 
 function playSpaceshipSound() {
   if (!gameSoundsMuted && userHasInteracted) {
     try {
       spaceshipSound.pause();
       spaceshipSound.currentTime = 0;
+      spaceshipSound.muted = false;
       spaceshipSound.play();
-    } catch (e) {}
+      console.log("spaceship.mp3 played!");
+    } catch (e) {
+      console.log("spaceship.mp3 play error:", e);
+    }
+  } else {
+    console.log("spaceship.mp3 NOT played: gameSoundsMuted=", gameSoundsMuted, "userHasInteracted=", userHasInteracted);
   }
 }
 function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, spaceshipSound].forEach(a => a.volume = v); }
@@ -142,8 +148,9 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-let emptiedColumns = new Set(); // For spaceship.mp3 on column clear
-let invaderStartColumns = new Set(); // Track columns at wave start
+// --- Robust spaceship column clear logic ---
+let emptiedColumns = new Set(); // columns already played sound for
+let invaderStartColumns = new Set(); // columns used at spawn
 
 function spawnInvaderGrid() {
   invaders = [];
@@ -162,7 +169,7 @@ function spawnInvaderGrid() {
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
       });
-      invaderStartColumns.add(xVal); // Track all columns used at spawn
+      invaderStartColumns.add(xVal); // Track all columns used
     }
   }
   emptiedColumns = new Set(); // Reset on new wave
@@ -453,7 +460,7 @@ function gameLoop() {
     return;
   }
 
-  // Bullet-invader collision
+  // --- Bullet-invader collision ---
   let bulletIndicesToRemove = new Set(), invaderIndicesToRemove = new Set();
   bullets.forEach((b, bi) => {
     invaders.forEach((inv, ji) => {
@@ -479,6 +486,7 @@ function gameLoop() {
   let currentColumns = new Set(invaders.map(inv => Math.round(inv.x)));
   for (let col of invaderStartColumns) {
     if (!currentColumns.has(col) && !emptiedColumns.has(col)) {
+      console.log("Column cleared:", col);
       playSpaceshipSound();
       emptiedColumns.add(col);
     }
