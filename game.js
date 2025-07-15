@@ -74,6 +74,7 @@ const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
 const spacemanSound = new Audio('spaceman.mp3');
 const rocketSound = new Audio('rocket.mp3');
+const satelliteSound = new Audio('satellite.mp3'); // New: satellite sound
 
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
@@ -89,7 +90,8 @@ function playLifeLost1Sound() { if (!gameSoundsMuted) try { lifeLost1Sound.curre
 function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.currentTime = 0; lifeLost2Sound.play(); } catch (e) {} }
 function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
-function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, rocketSound].forEach(a => a.volume = v); }
+function playSatelliteSound() { if (!gameSoundsMuted) try { satelliteSound.currentTime = 0; satelliteSound.play(); } catch (e) {} }
+function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, rocketSound, satelliteSound].forEach(a => a.volume = v); }
 
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
@@ -116,7 +118,6 @@ function makeCells(width = BUNKER_W) {
     Array.from({length: width}, () => ({ hp: getBunkerCellHp() }))
   ); 
 }
-// This version centers the center bunker perfectly
 function buildBunkers() {
   const y = getBunkerY();
   const xs = getBunkerXs();
@@ -355,6 +356,7 @@ function gameLoop() {
     shooting = false;
   }
 
+  // BUNKER CELL COLLISION LOGIC (bullets)
   let bulletsAfter = [];
   for (let b of bullets) {
     let hit = false;
@@ -364,6 +366,7 @@ function gameLoop() {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && Math.round(b.x) === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
+            if (cell.hp === 0) playSatelliteSound(); // Play sound on cell destroyed
             hit = true;
           }
         }
@@ -371,6 +374,7 @@ function gameLoop() {
   }
   bullets = bulletsAfter;
 
+  // BUNKER CELL COLLISION LOGIC (bombs)
   let bombsAfter = [];
   for (let b of bombs) {
     let hit = false;
@@ -380,6 +384,7 @@ function gameLoop() {
           const cell = bunker.cells[row][col];
           if (cell && cell.hp > 0 && b.x === bunker.x + col && Math.round(b.y) === bunker.y + row) {
             cell.hp--;
+            if (cell.hp === 0) playSatelliteSound(); // Play sound on cell destroyed
             hit = true;
           }
         }
@@ -424,7 +429,10 @@ function gameLoop() {
         if (bunker.y + row === invaders[i].y)
           for (let col = 0; col < bunker.width; col++) {
             const cell = bunker.cells[row][col];
-            if (cell && cell.hp > 0) cell.hp--;
+            if (cell && cell.hp > 0) {
+              cell.hp--;
+              if (cell.hp === 0) playSatelliteSound();
+            }
           }
       invaderAtBunker = true;
       break;
