@@ -1,3 +1,17 @@
+const tileCount = 21;
+let gridSize = Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.9 / tileCount);
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = gridSize * tileCount;
+canvas.height = gridSize * tileCount;
+
+window.addEventListener('resize', () => {
+  gridSize = Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.9 / tileCount);
+  canvas.width = gridSize * tileCount;
+  canvas.height = gridSize * tileCount;
+});
+
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
   "😍","🥰","😘","😗","😙","😚","😐","😑","😶","🙄","😏","😣","😥","😮",
@@ -22,16 +36,9 @@ const emojiBonusScores = {};
 for (let i = 0; i < emojiBank.length; i++)
   emojiBonusScores[emojiBank[i]] = 1000 + i * 50;
 
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-canvas.width = 400;
-canvas.height = 400;
-const gridSize = 20;
-const tileCount = canvas.width / gridSize;
-
 let score = 0;
 let highScore = Number(localStorage.getItem("high_score") || 0);
-const player = { x: 10, y: tileCount - 1, speedCounter: 0 };
+const player = { x: Math.floor(tileCount / 2), y: tileCount - 1, speedCounter: 0 };
 let playerLives = 3;
 let bullets = [];
 let bombs = [];
@@ -65,7 +72,7 @@ const gameOverSound1 = new Audio('gameover.mp3');
 const gameOverSound2 = new Audio('gameover2.mp3');
 const ufoBombSound = new Audio('ufobomb1.mp3');
 const spacemanSound = new Audio('spaceman.mp3');
-const rocketSound = new Audio('rocket.mp3'); // <-- Added for rocket.mp3
+const rocketSound = new Audio('rocket.mp3');
 
 function playSpacemanSound() {
   if (!gameSoundsMuted) try { spacemanSound.currentTime = 0; spacemanSound.play(); } catch (e) {}
@@ -129,7 +136,7 @@ function spawnInvaderGrid() {
     }
     for (let col = 0; col < 5; col++) {
       invaders.push({
-        x: col * 2 + 2,
+        x: col * 3 + 2, // more spacing for wider grid
         y: row + 1,
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
@@ -156,7 +163,7 @@ function resetGame() {
   score = 0;
   bullets = [];
   bombs = [];
-  player.x = 10;
+  player.x = Math.floor(tileCount / 2);
   player.y = tileCount - 1;
   player.speedCounter = 0;
   playerLives = 3;
@@ -437,7 +444,6 @@ function gameLoop() {
   bombs.forEach(b => drawEmoji(b.x, Math.round(b.y), b.emoji, true));
   invaders.forEach(inv => drawEmoji(inv.x, inv.y, inv.emoji, true, null, inv.flickerPhase));
 
-  // Play rocket.mp3 when all invaders have been killed and game starts new level
   if (invaders.length === 0) {
     invaderSpeed = Math.max(1, invaderSpeed - 0.5);
     bombDropSpeed = Math.min(2, bombDropSpeed + 0.2);
@@ -475,7 +481,7 @@ function loseLifeOrGameOver(bombHit = false) {
     gameOverState = true;
   } else {
     playLifeLost1Sound();
-    player.x = 10;
+    player.x = Math.floor(tileCount / 2);
     player.y = tileCount - 1;
     player.speedCounter = 0;
     bombs = bombs.filter(b => b.y < player.y);
@@ -581,4 +587,3 @@ window.addEventListener('DOMContentLoaded', () => {
   showStartOverlay();
 });
 updateHUD();
-// DO NOT CALL gameLoop() HERE! Game starts after Play button pressed.
