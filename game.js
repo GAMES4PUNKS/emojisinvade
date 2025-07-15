@@ -120,6 +120,8 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
+let emptiedColumns = new Set(); // For spaceship.mp3 on column clear
+
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 10; row++) {
@@ -138,6 +140,7 @@ function spawnInvaderGrid() {
     }
   }
   emptiedColumns = new Set(); // Reset on new wave
+  window._invaderStartColumns = undefined; // Reset column tracker (added for spaceship.mp3 logic)
 }
 
 let left = false, right = false, shooting = false;
@@ -183,8 +186,6 @@ let bonusEmoji = null;
 let bonusTimer = 0;
 let bonusSpeedupHits = 0;
 let firstBonusSpawned = false;
-
-let emptiedColumns = new Set(); // For spaceship.mp3 on column clear
 
 function getRandomUFOEmoji() {
   const totalWeight = 1.75 + 1;
@@ -244,20 +245,17 @@ function updateBonusEmoji() {
 }
 
 function drawNegativeBomb(x, y, size = gridSize) {
-  // Draw bomb body (white instead of black)
   ctx.save();
   ctx.beginPath();
   ctx.arc(x * gridSize + gridSize/2, y * gridSize + gridSize/2, size/2.4, 0, Math.PI * 2);
-  ctx.fillStyle = "white"; // Inverted from black
+  ctx.fillStyle = "white";
   ctx.fill();
-  // Draw fuse (black instead of white)
   ctx.beginPath();
   ctx.moveTo(x * gridSize + gridSize/2, y * gridSize + gridSize/2 - size/2.4);
   ctx.lineTo(x * gridSize + gridSize/2, y * gridSize + gridSize/2 - size/1.3);
-  ctx.strokeStyle = "black"; // Inverted from light color
+  ctx.strokeStyle = "black";
   ctx.lineWidth = 2;
   ctx.stroke();
-  // Draw spark (black dot)
   ctx.beginPath();
   ctx.arc(x * gridSize + gridSize/2, y * gridSize + gridSize/2 - size/1.3, size/9, 0, Math.PI * 2);
   ctx.fillStyle = "black";
@@ -430,6 +428,7 @@ function gameLoop() {
     return;
   }
 
+  // Bullet-invader collision
   let bulletIndicesToRemove = new Set(), invaderIndicesToRemove = new Set();
   bullets.forEach((b, bi) => {
     invaders.forEach((inv, ji) => {
@@ -451,9 +450,12 @@ function gameLoop() {
     return true;
   });
 
-  // Play spaceship.mp3 if a column is cleared
+  // --- Robust column-clear detection for spaceship.mp3 ---
+  if (!window._invaderStartColumns) {
+    window._invaderStartColumns = new Set(invaders.map(inv => Math.round(inv.x)));
+  }
   let currentColumns = new Set(invaders.map(inv => Math.round(inv.x)));
-  for (let col = 0; col < tileCount; col++) {
+  for (let col of window._invaderStartColumns) {
     if (!currentColumns.has(col) && !emptiedColumns.has(col)) {
       playSpaceshipSound();
       emptiedColumns.add(col);
