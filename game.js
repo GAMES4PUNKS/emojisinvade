@@ -200,13 +200,26 @@ function getUfoSpeed(emoji) {
   return minSpeed + ((maxSpeed - minSpeed) * idx / (emojiBank.length - 1));
 }
 
+// --- UFO BOMB LOGIC: 50% of UFOs never drop bombs, 50% can, but 100% reduction = none ever drop ---
 function maybeSpawnBonusEmoji() {
   if (bonusEmoji !== null) return;
   if (Math.random() < 1/240) {
     const fromLeft = Math.random() < 0.5;
     const emoji = getRandomUFOEmoji();
     const speed = getUfoSpeed(emoji);
-    bonusEmoji = { emoji, x: fromLeft ? 0 : tileCount - 1, y: 0, dir: fromLeft ? 1 : -1, speed: speed, progress: 0, bankIndex: emojiBank.indexOf(emoji) };
+    // 50% can never drop bombs
+    const canDropBomb = Math.random() < 0.5;
+    bonusEmoji = {
+      emoji,
+      x: fromLeft ? 0 : tileCount - 1,
+      y: 0,
+      dir: fromLeft ? 1 : -1,
+      speed: speed,
+      progress: 0,
+      bankIndex: emojiBank.indexOf(emoji),
+      canDropBomb: canDropBomb,
+      bombDropped: false
+    };
     try { if (!gameSoundsMuted) { ufoSound.currentTime = 0; ufoSound.play(); } } catch (e) {}
   }
 }
@@ -214,9 +227,21 @@ function updateBonusEmoji() {
   if (!bonusEmoji) return;
   bonusEmoji.progress += bonusEmoji.speed;
   if (bonusEmoji.progress >= 1) { bonusEmoji.x += bonusEmoji.dir; bonusEmoji.progress = 0; }
-  if (Math.random() < ufoBombDropChance) { bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 }); playUfoBombSound(); }
+  // 100% reduction = never drop bombs, even if canDropBomb is true
+  // (Leave this code in for future use, but never runs now)
+  if (
+    bonusEmoji.canDropBomb &&
+    !bonusEmoji.bombDropped &&
+    false // this disables bomb dropping
+  ) {
+    // bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 });
+    // playUfoBombSound();
+    // bonusEmoji.bombDropped = true;
+  }
   if (bonusEmoji.x < 0 || bonusEmoji.x >= tileCount) { try { ufoSound.pause(); ufoSound.currentTime = 0; } catch (e) {} bonusEmoji = null; }
 }
+// -- END UFO BOMB LOGIC ---
+
 function drawBonusEmoji() { if (!bonusEmoji) return; let drawX = bonusEmoji.x + bonusEmoji.dir * bonusEmoji.progress; drawEmoji(drawX, bonusEmoji.y, bonusEmoji.emoji, true, gridSize); }
 function handleBulletBonusCollision() {
   if (!bonusEmoji) return;
@@ -462,7 +487,6 @@ function loseLifeOrGameOver(bombHit = false) {
   }
 }
 
-// --- Only allow restart by Enter key or PLAY NOW popup on canvas ---
 function manualRestart() {
   if (!gameOverState) return;
   gameOverOverlay.style.display = 'none';
@@ -472,16 +496,10 @@ function manualRestart() {
   reqId = requestAnimationFrame(gameLoop);
 }
 
-// REMOVE these to prevent accidental restart by mouse/touch anywhere:
-// canvas.addEventListener('mousedown', manualRestart);
-// canvas.addEventListener('touchstart', manualRestart);
-
-// --- Only allow restart by Enter key or tapping PLAY NOW overlay ---
 overlay.onclick = () => {
   if (!initialGameStarted && overlay.style.display === "block") {
     startMainGame();
   }
-  // Also allow restart from game over by clicking overlay (PLAY NOW)
   if (gameOverState && overlay.style.display === "block") {
     manualRestart();
   }
@@ -494,7 +512,6 @@ window.addEventListener('keydown', function(e) {
     const popup = document.getElementById("loginPopup");
     if (popup && popup.style.display === "block") { popup.style.display = "none"; canvas.focus(); }
   }
-  // Only allow restart if Enter key is pressed
   if (gameOverState && e.key === "Enter") manualRestart();
 });
 
