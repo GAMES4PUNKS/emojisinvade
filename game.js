@@ -12,6 +12,7 @@ window.addEventListener('resize', () => {
   canvas.height = gridSize * tileCount;
 });
 
+// EMOJIS
 const emojiBank = [
   "😀","😃","😄","😁","😆","😅","😂","😊","😇","😉","🙂","🙃","😋","😎",
   "😍","🥰","😘","😗","😙","😚","😐","😑","😶","🙄","😏","😣","😥","😮",
@@ -38,7 +39,7 @@ for (let i = 0; i < emojiBank.length; i++)
 
 let score = 0;
 let highScore = Number(localStorage.getItem("high_score") || 0);
-const player = { x: Math.floor(tileCount / 2), y: tileCount - 1, speedCounter: 0 };
+const player = { x: Math.floor(tileCount/2), y: tileCount - 1, speedCounter: 0 };
 let playerLives = 3;
 let bullets = [];
 let bombs = [];
@@ -126,6 +127,7 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
+// INVADER GRID WITH 1 CELL GAP
 function spawnInvaderGrid() {
   invaders = [];
   for (let row = 0; row < 10; row++) {
@@ -136,7 +138,7 @@ function spawnInvaderGrid() {
     }
     for (let col = 0; col < 5; col++) {
       invaders.push({
-        x: col * 3 + 2, // more spacing for wider grid
+        x: col * 2 + 2, // 1 cell gap between invaders horizontally
         y: row + 1,
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
@@ -163,7 +165,7 @@ function resetGame() {
   score = 0;
   bullets = [];
   bombs = [];
-  player.x = Math.floor(tileCount / 2);
+  player.x = Math.floor(tileCount/2);
   player.y = tileCount - 1;
   player.speedCounter = 0;
   playerLives = 3;
@@ -235,7 +237,6 @@ function updateBonusEmoji() {
     bonusEmoji.x += bonusEmoji.dir;
     bonusEmoji.progress = 0;
   }
-  // UFO bomb drop probability reduced by 50%
   if (Math.random() < ufoBombDropChance * 0.5) {
     bombs.push({ x: bonusEmoji.x, y: bonusEmoji.y + 1, emoji: "💣", vy: 0 });
     playUfoBombSound();
@@ -481,7 +482,7 @@ function loseLifeOrGameOver(bombHit = false) {
     gameOverState = true;
   } else {
     playLifeLost1Sound();
-    player.x = Math.floor(tileCount / 2);
+    player.x = Math.floor(tileCount/2);
     player.y = tileCount - 1;
     player.speedCounter = 0;
     bombs = bombs.filter(b => b.y < player.y);
@@ -587,3 +588,4 @@ window.addEventListener('DOMContentLoaded', () => {
   showStartOverlay();
 });
 updateHUD();
+// DO NOT CALL gameLoop() HERE! Game starts after Play button pressed.
