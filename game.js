@@ -93,13 +93,38 @@ function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSoun
 
 const shitImg = new Image();
 shitImg.src = 'BASE.png';
+// BUNKERS
 const BUNKER_W = 3, BUNKER_H = 3;
-let bunkerLevel = 0;
+const CENTER_BUNKER_W = 5; // Center bunker is 5 cells wide
+
 function getBunkerCellHp() { return Math.max(1, 5 - bunkerLevel * 0.05); }
-function getBunkerY() { const previousY = tileCount - 5; const bottomY = tileCount - 2; return Math.round(previousY + 0.4 * (bottomY - previousY)); }
-function getBunkerXs() { return [Math.round(tileCount * 1 / 6), Math.round(tileCount * 1 / 2), Math.round(tileCount * 5 / 6)]; }
-function makeCells() { return Array.from({length: BUNKER_H}, () => Array.from({length: BUNKER_W}, () => ({ hp: getBunkerCellHp() }))); }
-function buildBunkers() { const y = getBunkerY(); const xs = getBunkerXs(); return [ { x: xs[0] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() }, { x: xs[1] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() }, { x: xs[2] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells() } ]; }
+function getBunkerY() { 
+  const previousY = tileCount - 5; 
+  const bottomY = tileCount - 2; 
+  return Math.round(previousY + 0.4 * (bottomY - previousY)); 
+}
+function getBunkerXs() { 
+  return [
+    Math.round(tileCount * 1 / 6),
+    Math.round(tileCount * 1 / 2),
+    Math.round(tileCount * 5 / 6)
+  ]; 
+}
+function makeCells(width = BUNKER_W) { 
+  return Array.from({length: BUNKER_H}, () => 
+    Array.from({length: width}, () => ({ hp: getBunkerCellHp() }))
+  ); 
+}
+function buildBunkers() {
+  const y = getBunkerY();
+  const xs = getBunkerXs();
+  return [
+    { x: xs[0] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells(BUNKER_W) },
+    { x: xs[1] - Math.floor(CENTER_BUNKER_W / 2), y, width: CENTER_BUNKER_W, height: BUNKER_H, cells: makeCells(CENTER_BUNKER_W) },
+    { x: xs[2] - 1, y, width: BUNKER_W, height: BUNKER_H, cells: makeCells(BUNKER_W) }
+  ];
+}
+let bunkerLevel = 0;
 let bunkers = buildBunkers();
 function drawBunker(bunker) {
   for (let row = 0; row < bunker.height; row++)
