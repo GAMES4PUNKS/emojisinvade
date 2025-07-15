@@ -81,7 +81,16 @@ function playLifeLost1Sound() { if (!gameSoundsMuted) try { lifeLost1Sound.curre
 function playLifeLost2Sound() { if (!gameSoundsMuted) try { lifeLost2Sound.currentTime = 0; lifeLost2Sound.play(); } catch (e) {} }
 function playGameOverSounds() { if (!gameSoundsMuted) { try { gameOverSound1.currentTime = 0; gameOverSound1.play(); } catch (e) {} try { gameOverSound2.currentTime = 0; gameOverSound2.play(); } catch (e) {} } }
 function playUfoBombSound() { if (!gameSoundsMuted) try { ufoBombSound.currentTime = 0; ufoBombSound.play(); } catch (e) {} }
-function playSpaceshipSound() { if (!gameSoundsMuted) try { spaceshipSound.currentTime = 0; spaceshipSound.play(); } catch (e) {} }
+function playSpaceshipSound() {
+  if (!gameSoundsMuted) {
+    // This logic ensures sound is reliably triggered and replayed
+    try {
+      spaceshipSound.pause();
+      spaceshipSound.currentTime = 0;
+      spaceshipSound.play().catch(e => {});
+    } catch (e) {}
+  }
+}
 function updateGameSoundMute() { const v = gameSoundsMuted ? 0 : 1; [...fireSounds, invaderDownSound, ufoSound, ufoHitSound, ...ufoMissSounds, lifeLost1Sound, lifeLost2Sound, gameOverSound1, gameOverSound2, ufoBombSound, spacemanSound, spaceshipSound].forEach(a => a.volume = v); }
 
 const shitImg = new Image();
@@ -120,10 +129,13 @@ function updateHUD() {
   livesDisplay.textContent = ` Lives: ${playerLives}`;
 }
 
-let emptiedColumns = new Set(); // For spaceship.mp3 on column clear
+// --- spaceship.mp3 robust column clear tracker ---
+let emptiedColumns = new Set();
+let invaderStartColumns = new Set();
 
 function spawnInvaderGrid() {
   invaders = [];
+  invaderStartColumns = new Set();
   for (let row = 0; row < 10; row++) {
     const rowEmojis = [];
     while (rowEmojis.length < 5) {
@@ -131,16 +143,17 @@ function spawnInvaderGrid() {
       if (!rowEmojis.includes(emoji)) rowEmojis.push(emoji);
     }
     for (let col = 0; col < 5; col++) {
+      let xVal = col * 2 + 2;
       invaders.push({
-        x: col * 2 + 2,
+        x: xVal,
         y: row + 1,
         emoji: rowEmojis[col],
         flickerPhase: Math.random() * Math.PI * 2
       });
+      invaderStartColumns.add(xVal);
     }
   }
   emptiedColumns = new Set(); // Reset on new wave
-  window._invaderStartColumns = undefined; // Reset column tracker (added for spaceship.mp3 logic)
 }
 
 let left = false, right = false, shooting = false;
@@ -450,12 +463,9 @@ function gameLoop() {
     return true;
   });
 
-  // --- Robust column-clear detection for spaceship.mp3 ---
-  if (!window._invaderStartColumns) {
-    window._invaderStartColumns = new Set(invaders.map(inv => Math.round(inv.x)));
-  }
+  // --- spaceship.mp3 robust column clear logic ---
   let currentColumns = new Set(invaders.map(inv => Math.round(inv.x)));
-  for (let col of window._invaderStartColumns) {
+  for (let col of invaderStartColumns) {
     if (!currentColumns.has(col) && !emptiedColumns.has(col)) {
       playSpaceshipSound();
       emptiedColumns.add(col);
